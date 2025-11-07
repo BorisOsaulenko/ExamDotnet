@@ -1,0 +1,28 @@
+# Build artifacts
+bin/
+obj/
+appsettings.json
+appsettings.*.json
+
+# User-specific / IDE
+.vscode/
+*.user
+*.suo
+
+# Logs / coverage / temp
+*.log
+coverage/
+TestResults/
+*.sqlite-journal
+
+# EF Core local database files (if using SQLite)
+*.db
+*.sqlite
+
+# Secrets (use dotnet user-secrets instead of committing real values)
+# Do NOT ignore base appsettings unless they contain secrets.
+# Uncomment if you really want to exclude local overrides:
+# appsettings.Local.json
+
+# Generated files
+**/Generated/*
