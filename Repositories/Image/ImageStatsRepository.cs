@@ -7,14 +7,4 @@ public class ImageStatsRepository : GenericRepository<ImageStats>, IImageStatsRe
 {
     public ImageStatsRepository(ApplicationDbContext context)
         : base(context) { }
-
-    public async Task<ImageStats?> GetByImageIdAsync(
-        int imageId,
-        CancellationToken cancellationToken
-    )
-    {
-        return await Entities
-            .FirstOrDefaultAsync(stats => stats.ImageId == imageId, cancellationToken)
-            .ConfigureAwait(false);
-    }
 }

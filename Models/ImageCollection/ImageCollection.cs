@@ -17,13 +17,13 @@ public class ImageCollection
     public int Id { get; set; }
     public required string Title { get; set; }
     public string? Description { get; set; }
-    public ICollection<Image> Images { get; set; } = [];
+    public ICollection<ImageMetadata> Images { get; set; } = [];
 
     public ImageCollectionAccessLevel AccessLevel { get; set; }
     public ICollection<ImageCollectionAllowedUser> AllowedUsers { get; set; } = [];
 
-    public int? CoverImageId { get; set; }
-    public Image? CoverImage { get; set; }
+    public int? CoverImageMetadataId { get; set; }
+    public ImageMetadata? CoverImageMetadata { get; set; }
 
     public ICollection<UserPreferences> Subscribers { get; set; } = [];
 

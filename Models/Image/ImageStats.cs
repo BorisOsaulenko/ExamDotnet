@@ -3,8 +3,8 @@ namespace Models;
 public class ImageStats
 {
     public int Id { get; set; }
-    public int ImageId { get; set; }
-    public Image? Image { get; set; }
+
+    public ImageMetadata? ImageMetadata { get; set; }
     public int Views { get; set; }
     public int Downloads { get; set; }
     public ICollection<UserPreferences> LikedByUsers { get; set; } = [];

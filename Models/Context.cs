@@ -34,6 +34,7 @@ public class ApplicationDbContext : IdentityDbContext<User>
         : base(options) { }
 
     public DbSet<Image> Images => Set<Image>();
+    public DbSet<ImageMetadata> ImageMetadata => Set<ImageMetadata>();
     public DbSet<ImageStats> ImageStats => Set<ImageStats>();
     public DbSet<ImageComment> ImageComments => Set<ImageComment>();
     public DbSet<ImageCollection> ImageCollections => Set<ImageCollection>();
@@ -72,8 +73,17 @@ public class ApplicationDbContext : IdentityDbContext<User>
         builder.Entity<Image>(entity =>
         {
             entity
+                .HasOne(e => e.Metadata)
+                .WithOne(m => m.Image)
+                .HasForeignKey<ImageMetadata>(m => m.ImageId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ImageMetadata>(entity =>
+        {
+            entity
                 .HasOne(e => e.User)
-                .WithMany(u => u.Images)
+                .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -84,32 +94,32 @@ public class ApplicationDbContext : IdentityDbContext<User>
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity
-                .HasOne(e => e.Stats)
-                .WithOne(s => s.Image)
-                .HasForeignKey<ImageStats>(s => s.ImageId)
+                .HasOne(e => e.ImageStats)
+                .WithOne(s => s.ImageMetadata)
+                .HasForeignKey<ImageMetadata>(im => im.ImageStatsId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity
                 .HasMany(e => e.AllowedUsers)
                 .WithOne(au => au.Image)
-                .HasForeignKey(au => au.ImageId)
+                .HasForeignKey(au => au.ImageMetadataId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity
                 .HasMany(e => e.Tags)
-                .WithOne(t => t.Image)
-                .HasForeignKey(t => t.ImageId)
+                .WithOne(t => t.ImageMetadata)
+                .HasForeignKey(t => t.ImageMetadataId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<ImageAllowedUser>(entity =>
         {
-            entity.HasIndex(e => new { e.ImageId, e.UserId }).IsUnique();
+            entity.HasIndex(e => new { e.ImageMetadataId, e.UserId }).IsUnique();
         });
 
         builder.Entity<ImageTag>(entity =>
         {
-            entity.HasIndex(e => new { e.ImageId, e.Tag }).IsUnique();
+            entity.HasIndex(e => new { e.ImageMetadataId, e.Tag }).IsUnique();
         });
     }
 
@@ -130,9 +140,9 @@ public class ApplicationDbContext : IdentityDbContext<User>
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity
-                .HasOne(e => e.CoverImage)
+                .HasOne(e => e.CoverImageMetadata)
                 .WithMany()
-                .HasForeignKey(e => e.CoverImageId)
+                .HasForeignKey(e => e.CoverImageMetadataId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity

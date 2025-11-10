@@ -1,10 +1,10 @@
 using FluentValidation;
 using Models;
-using ImageModel = Models.Image;
+using ImageModel = Models.ImageMetadata;
 
 namespace Services.Image;
 
-public partial class ImageService
+public partial class ImageMetadataService
 {
     public AbstractValidator<ImageModel> CreateImageValidator()
     {
@@ -13,20 +13,13 @@ public partial class ImageService
             .RuleFor(image => image.Title)
             .NotEmpty()
             .WithMessage("Title is required.")
-            .MaximumLength(100)
-            .WithMessage("Title cannot exceed 100 characters.");
+            .MaximumLength(ImageMetadata.MaxTitleLength)
+            .WithMessage($"Title cannot exceed {ImageMetadata.MaxTitleLength} characters.");
 
         validator
             .RuleFor(image => image.Description)
-            .MaximumLength(500)
-            .WithMessage("Description cannot exceed 500 characters.");
-
-        validator
-            .RuleFor(image => image.BlobUri)
-            .NotEmpty()
-            .WithMessage("BlobUri is required.")
-            .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute))
-            .WithMessage("BlobUri must be a valid absolute URI.");
+            .MaximumLength(ImageMetadata.MaxDescriptionLength)
+            .WithMessage($"Description cannot exceed {ImageMetadata.MaxDescriptionLength} characters.");
 
         validator.RuleFor(image => image.UserId).NotEmpty().WithMessage("UserId is required.");
 
@@ -34,8 +27,6 @@ public partial class ImageService
             .RuleFor(image => image.AccessLevel)
             .IsInEnum()
             .WithMessage("AccessLevel must be a valid enum value.");
-
-        validator.RuleFor(image => image.BlobName).NotEmpty().WithMessage("BlobName is required.");
 
         validator
             .RuleFor(image => image.Tags)

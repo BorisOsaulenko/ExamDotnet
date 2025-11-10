@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Models;
 using Repositories;
 using Services.Util;
-using ImageStatsModel = Models.ImageStats;
+using ImageMetadataModel = Models.ImageMetadata;
 
 namespace Services.Image;
 
@@ -12,15 +12,15 @@ public partial class ImageCommentService : IImageCommentService
 {
     public ImageCommentService(
         IImageCommentRepository repository,
-        IImageStatsRepository imageStatsRepository
+        IImageMetadataRepository imageMetadataRepository
     )
     {
         _repository = repository;
-        _imageStatsRepository = imageStatsRepository;
+        _imageMetadataRepository = imageMetadataRepository;
     }
 
     private readonly IImageCommentRepository _repository;
-    private readonly IImageStatsRepository _imageStatsRepository;
+    private readonly IImageMetadataRepository _imageMetadataRepository;
 
     public async Task<ImageComment> AddAsync(
         ImageComment entity,
@@ -28,8 +28,8 @@ public partial class ImageCommentService : IImageCommentService
     )
     {
         CreateImageCommentValidator().ValidateAndThrow(entity);
-        ImageStatsModel? image = await _imageStatsRepository
-            .GetByIdAsync(cancellationToken, entity.ImageId)
+        ImageMetadataModel? image = await _imageMetadataRepository
+            .GetByIdAsync(cancellationToken, entity.ImageStatsId)
             .ConfigureAwait(false);
 
         if (image == null || !ServiceUtils.Image.UserHasAccess(image, entity.UserId))
@@ -54,9 +54,9 @@ public partial class ImageCommentService : IImageCommentService
             .Query()
             .Where(predicate)
             .Join(
-                _imageStatsRepository.Query().Where(accessPredicate),
-                comment => comment.ImageId,
-                image => image.Id,
+                _imageMetadataRepository.Query().Where(accessPredicate),
+                comment => comment.ImageStatsId,
+                metadata => metadata.ImageStatsId,
                 (comment, image) => new { comment, image }
             )
             .Select(joined => joined.comment)

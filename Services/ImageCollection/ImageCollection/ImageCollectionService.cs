@@ -1,6 +1,7 @@
 using Azure.Storage.Blobs;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Models;
 using Repositories;
 using Services.Util;
 using ImageCollectionModel = Models.ImageCollection;
@@ -12,19 +13,19 @@ public partial class ImageCollectionService : IImageCollectionService
 {
     public ImageCollectionService(
         ImageCollectionRepository repository,
-        ImageRepository imageRepository,
+        ImageMetadataRepository imageMetadataRepository,
         [FromKeyedServices("PublicImages")] BlobContainerClient publicContainerClient,
         [FromKeyedServices("PrivateImages")] BlobContainerClient privateContainerClient
     )
     {
         _repository = repository;
-        _imageRepository = imageRepository;
+        _imageMetadataRepository = imageMetadataRepository;
         _publicContainerClient = publicContainerClient;
         _privateContainerClient = privateContainerClient;
     }
 
     private readonly ImageCollectionRepository _repository;
-    private readonly ImageRepository _imageRepository;
+    private readonly ImageMetadataRepository _imageMetadataRepository;
     private readonly BlobContainerClient _publicContainerClient;
     private readonly BlobContainerClient _privateContainerClient;
 
@@ -85,23 +86,19 @@ public partial class ImageCollectionService : IImageCollectionService
     {
         CreateImageCollectionValidator().ValidateAndThrow(entity);
 
-        ImageCollectionModel? existingEntity =
-            await _repository
-                .Query()
-                .Include(collection => collection.Images)
-                .FirstOrDefaultAsync(collection => collection.Id == entity.Id, cancellationToken)
-                .ConfigureAwait(false)
-            ?? throw new InvalidOperationException("Image collection does not exist.");
+        ImageCollectionModel? existingEntity = await _repository
+            .GetByIdAsync(cancellationToken, entity.Id)
+            .ConfigureAwait(false);
 
-        if (existingEntity.UserId != entity.UserId)
+        if (existingEntity == null || existingEntity.UserId != entity.UserId)
         {
             throw new InvalidOperationException("Image collection does not exist.");
         }
 
-        if (entity.CoverImageId != null)
+        if (entity.CoverImageMetadataId != null)
         {
-            ImageModel? coverImage = await _imageRepository
-                .GetByIdAsync(cancellationToken, entity.CoverImageId)
+            ImageMetadata? coverImage = await _imageMetadataRepository
+                .GetByIdAsync(cancellationToken, entity.CoverImageMetadataId)
                 .ConfigureAwait(false);
             if (coverImage == null || coverImage.ImageCollectionId != entity.Id)
             {
@@ -114,7 +111,7 @@ public partial class ImageCollectionService : IImageCollectionService
         existingEntity.Title = entity.Title;
         existingEntity.Description = entity.Description;
         existingEntity.AccessLevel = entity.AccessLevel;
-        existingEntity.CoverImageId = entity.CoverImageId;
+        existingEntity.CoverImageMetadataId = entity.CoverImageMetadataId;
 
         _repository.Update(existingEntity);
         await _repository.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

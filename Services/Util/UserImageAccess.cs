@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 using Models;
-using ImageModel = Models.Image;
+using ImageMetadataModel = Models.ImageMetadata;
 
 namespace Services.Util;
 
@@ -8,12 +8,12 @@ public partial class ServiceUtils
 {
     public class Image
     {
-        public static IQueryable<ImageModel> ApplyAccessFilter(
-            IQueryable<ImageModel> query,
+        public static IQueryable<ImageMetadataModel> ApplyAccessFilter(
+            IQueryable<ImageMetadataModel> query,
             string userId
         ) => query.Where(BuildAccessPredicate(userId));
 
-        public static bool UserHasAccess(ImageModel image, string userId)
+        public static bool UserHasAccess(ImageMetadataModel image, string userId)
         {
             if (image.AccessLevel == ImageAccessLevel.Public)
             {
@@ -36,7 +36,9 @@ public partial class ServiceUtils
             return false;
         }
 
-        public static Expression<Func<ImageModel, bool>> BuildAccessPredicate(string userId) =>
+        public static Expression<Func<ImageMetadataModel, bool>> BuildAccessPredicate(
+            string userId
+        ) =>
             image =>
                 image.AccessLevel == ImageAccessLevel.Public
                 || image.UserId == userId

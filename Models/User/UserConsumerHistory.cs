@@ -18,7 +18,7 @@ public class UserConsumerHistory
     public ConsumerActivityType ActivityType { get; set; }
     public DateTime ActivityDate { get; set; }
 
-    // Optional fields for ImageView, ImageDownload and ImageShare
+    // Optional fields for ImageDownload and ImageShare
     public int? ImageId { get; set; }
     public Image? Image { get; set; }
 

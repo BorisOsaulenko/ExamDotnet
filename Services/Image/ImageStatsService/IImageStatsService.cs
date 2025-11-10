@@ -12,7 +12,6 @@ public interface IImageStatsService
     );
     Task IncrementViewsAsync(int imageId, CancellationToken cancellationToken = default);
     Task IncrementDownloadsAsync(int imageId, CancellationToken cancellationToken = default);
-    Task IncrementLikesAsync(int imageId, CancellationToken cancellationToken = default);
     Task IncrementSharesAsync(int imageId, CancellationToken cancellationToken = default);
     Task RemoveAsync(ImageStats entity, CancellationToken cancellationToken = default);
 }

@@ -11,22 +11,22 @@ public partial class ImageService : IImageService
     private readonly IImageRepository _repository;
     private readonly IBlobContainerClient _containerClient;
     private readonly IImageCollectionRepository _imageCollectionRepository;
+    private readonly IImageMetadataRepository _imageMetadataRepository;
 
     public ImageService(
         IImageRepository repository,
         [FromKeyedServices("PublicImages")] IBlobContainerClient containerClient,
-        IImageCollectionRepository imageCollectionRepository
+        IImageCollectionRepository imageCollectionRepository,
+        IImageMetadataRepository imageMetadataRepository
     )
     {
-        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _containerClient =
-            containerClient ?? throw new ArgumentNullException(nameof(containerClient));
-        _imageCollectionRepository =
-            imageCollectionRepository
-            ?? throw new ArgumentNullException(nameof(imageCollectionRepository));
+        _repository = repository;
+        _containerClient = containerClient;
+        _imageCollectionRepository = imageCollectionRepository;
+        _imageMetadataRepository = imageMetadataRepository;
     }
 
-    private static string GetMimeType(ImageContentType contentType) =>
+    public static string GetMimeType(ImageContentType contentType) =>
         contentType switch
         {
             ImageContentType.Jpeg => "image/jpeg",
@@ -37,7 +37,7 @@ public partial class ImageService : IImageService
             _ => "application/octet-stream",
         };
 
-    private static string GenerateBlobName(string userId) => $"{userId}/{Guid.NewGuid():N}";
+    private static string GenerateBlobName() => $"{Guid.NewGuid():N}";
 
     private static readonly TimeSpan DefaultSasLifetime = TimeSpan.FromMinutes(5);
 

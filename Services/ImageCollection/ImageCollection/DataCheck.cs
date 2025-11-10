@@ -32,10 +32,10 @@ public partial class ImageCollectionService
         validator.RuleFor(ic => ic.UserId).NotEmpty().WithMessage("UserId must not be empty.");
 
         validator
-            .RuleFor(ic => ic.CoverImageId)
+            .RuleFor(ic => ic.CoverImageMetadataId)
             .GreaterThan(0)
-            .When(ic => ic.CoverImageId.HasValue)
-            .WithMessage("CoverImageId must be greater than 0 if specified.");
+            .When(ic => ic.CoverImageMetadataId.HasValue)
+            .WithMessage("CoverImageMetadataId must be greater than 0 if specified.");
 
         return validator;
     }

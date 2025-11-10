@@ -30,11 +30,7 @@ public sealed class BlobContainerClientAdapter : IBlobContainerClient
 
         return _inner
             .GetBlobClient(blobName)
-            .UploadAsync(
-                content,
-                blobHttpHeaders,
-                cancellationToken: cancellationToken
-            );
+            .UploadAsync(content, blobHttpHeaders, cancellationToken: cancellationToken);
     }
 
     public Task DeleteIfExistsAsync(string blobName, CancellationToken cancellationToken = default)

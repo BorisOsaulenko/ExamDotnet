@@ -1,7 +1,7 @@
 using FluentValidation;
 using Models;
 using ImageCollectionModel = Models.ImageCollection;
-using ImageModel = Models.Image;
+using ImageMetadataModel = Models.ImageMetadata;
 
 namespace Services.User;
 
@@ -66,15 +66,15 @@ public partial class UserProducerHistoryService
             .When(x => x.ActivityType == ProducerActivityType.ImageEdit);
         validator
             .RuleFor(x => x.PreviousImageDescription)
-            .MaximumLength(ImageModel.MaxDescriptionLength)
+            .MaximumLength(ImageMetadataModel.MaxDescriptionLength)
             .WithMessage(
-                $"PreviousImageDescription cannot exceed {ImageModel.MaxDescriptionLength} characters."
+                $"PreviousImageDescription cannot exceed {ImageMetadataModel.MaxDescriptionLength} characters."
             );
         validator
             .RuleFor(x => x.PreviousImageTitle)
-            .MaximumLength(ImageModel.MaxTitleLength)
+            .MaximumLength(ImageMetadataModel.MaxTitleLength)
             .WithMessage(
-                $"PreviousImageTitle cannot exceed {ImageModel.MaxTitleLength} characters."
+                $"PreviousImageTitle cannot exceed {ImageMetadataModel.MaxTitleLength} characters."
             )
             .NotNull()
             .When(x => x.ActivityType == ProducerActivityType.ImageEdit);
@@ -84,9 +84,9 @@ public partial class UserProducerHistoryService
             .When(x => x.ActivityType == ProducerActivityType.ImageEdit);
         validator
             .RuleFor(x => x.PreviousImageLocation)
-            .MaximumLength(ImageModel.MaxLocationLength)
+            .MaximumLength(ImageMetadataModel.MaxLocationLength)
             .WithMessage(
-                $"PreviousImageLocation cannot exceed {ImageModel.MaxLocationLength} characters."
+                $"PreviousImageLocation cannot exceed {ImageMetadataModel.MaxLocationLength} characters."
             );
         validator
             .RuleFor(x => x.ImageId)

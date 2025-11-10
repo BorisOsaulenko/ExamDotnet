@@ -1,40 +1,41 @@
 using Models;
 using Repositories;
-using ImageModel = Models.Image;
+using ImageMetadataModel = Models.ImageMetadata;
 
 namespace Services.Image;
 
 public class ImageAllowedUserService : IImageAllowedUserService
 {
     private readonly IImageAllowedUserRepository _repository;
-    private readonly IImageRepository _imageRepository;
+    private readonly IImageMetadataRepository _imageMetadataRepository;
 
     public ImageAllowedUserService(
         IImageAllowedUserRepository repository,
-        IImageRepository imageRepository
+        IImageMetadataRepository imageRepository
     )
     {
         _repository = repository;
-        _imageRepository = imageRepository;
+        _imageMetadataRepository = imageRepository;
     }
 
     public async Task<ImageAllowedUser> AddAsync(
+        string userId,
         ImageAllowedUser entity,
         CancellationToken cancellationToken = default
     )
     {
-        ImageModel? image = await _imageRepository
-            .GetByIdAsync(cancellationToken, entity.ImageId)
+        ImageMetadataModel? image = await _imageMetadataRepository
+            .GetByIdAsync(cancellationToken, entity.ImageMetadataId)
             .ConfigureAwait(false);
 
-        if (image == null || image.Id != entity.ImageId)
-        {
+        if (image == null || image.UserId != userId)
             throw new InvalidOperationException("Image does not exist.");
-        }
+
         return await _repository.AddAsync(entity, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task RemoveAsync(
+        string userId,
         ImageAllowedUser entity,
         CancellationToken cancellationToken = default
     )
@@ -42,22 +43,20 @@ public class ImageAllowedUserService : IImageAllowedUserService
         ImageAllowedUser? existingEntity = await _repository
             .GetByIdAsync(cancellationToken, entity.Id)
             .ConfigureAwait(false);
-        if (existingEntity == null || existingEntity.Id != entity.Id)
-        {
+        if (existingEntity == null || existingEntity.UserId != userId)
             throw new InvalidOperationException("Entity does not exist.");
-        }
 
         _repository.Remove(entity);
         await _repository.SaveChangesAsync(cancellationToken);
     }
 
     public async Task RemoveAllForImageAsync(
-        int imageId,
+        int imageMetadataId,
         CancellationToken cancellationToken = default
     )
     {
         List<ImageAllowedUser> allowedUsers = await _repository.GetByPredicateAsync(
-            au => au.ImageId == imageId,
+            au => au.ImageMetadataId == imageMetadataId,
             cancellationToken
         );
 
