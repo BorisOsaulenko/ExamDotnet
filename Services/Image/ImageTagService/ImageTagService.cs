@@ -1,43 +1,30 @@
-using System.Linq.Expressions;
 using Models;
 using Repositories;
-using Services.Identity;
-using Services.Util;
 using ImageModel = Models.Image;
 
 namespace Services.Image;
 
 public class ImageTagService : IImageTagService
 {
-    public ImageTagService(
-        ImageTagRepository repository,
-        ImageRepository imageRepository,
-        ICurrentUserService currentUserService
-    )
+    public ImageTagService(ImageTagRepository repository, ImageRepository imageRepository)
     {
         _repository = repository;
         _imageRepository = imageRepository;
-        _currentUserService = currentUserService;
     }
 
     private readonly ImageTagRepository _repository;
     private readonly ImageRepository _imageRepository;
-    private readonly ICurrentUserService _currentUserService;
 
     public async Task<ImageTag> AddAsync(
         ImageTag entity,
         CancellationToken cancellationToken = default
     )
     {
-        string currentUserId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
-        ImageModel? image = await _imageRepository
-            .GetByIdAsync(cancellationToken, entity.ImageId)
-            .ConfigureAwait(false);
-
-        if (image == null || image.UserId != currentUserId)
-            throw new UnauthorizedAccessException(
-                "You do not have permission to modify this image."
-            );
+        ImageModel image =
+            await _imageRepository
+                .GetByIdAsync(cancellationToken, entity.ImageId)
+                .ConfigureAwait(false)
+            ?? throw new InvalidOperationException("Image does not exist.");
 
         if (await ExistsAsync(entity.ImageId, entity.Tag, cancellationToken).ConfigureAwait(false))
         {
@@ -50,17 +37,11 @@ public class ImageTagService : IImageTagService
 
     public async Task RemoveAsync(ImageTag entity, CancellationToken cancellationToken = default)
     {
-        string currentUserId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
-        ImageModel? image = await _imageRepository
-            .GetByIdAsync(cancellationToken, entity.ImageId)
-            .ConfigureAwait(false);
-
-        if (image == null || image.UserId != currentUserId)
-        {
-            throw new UnauthorizedAccessException(
-                "You do not have permission to modify this image."
-            );
-        }
+        ImageModel image =
+            await _imageRepository
+                .GetByIdAsync(cancellationToken, entity.ImageId)
+                .ConfigureAwait(false)
+            ?? throw new InvalidOperationException("Image does not exist.");
 
         if (await ExistsAsync(entity.ImageId, entity.Tag, cancellationToken).ConfigureAwait(false))
         {

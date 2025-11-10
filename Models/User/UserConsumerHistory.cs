@@ -2,13 +2,11 @@ namespace Models;
 
 public enum ConsumerActivityType
 {
-    ImageView,
     ImageDownload,
     ImageShare,
     CollectionView,
     CollectionDownload,
     CollectionShare,
-    SearchQuery,
 }
 
 public class UserConsumerHistory
@@ -27,7 +25,4 @@ public class UserConsumerHistory
     // Optional fields for CollectionView, CollectionDownload and CollectionShare
     public int? CollectionId { get; set; }
     public ImageCollection? Collection { get; set; }
-
-    // Optional field for SearchQuery
-    public string? SearchQuery { get; set; }
 }

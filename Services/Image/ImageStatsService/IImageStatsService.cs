@@ -10,6 +10,9 @@ public interface IImageStatsService
         Expression<Func<ImageStats, bool>> predicate,
         CancellationToken cancellationToken = default
     );
-    Task Update(ImageStats entity, CancellationToken cancellationToken = default);
-    Task Remove(ImageStats entity, CancellationToken cancellationToken = default);
+    Task IncrementViewsAsync(int imageId, CancellationToken cancellationToken = default);
+    Task IncrementDownloadsAsync(int imageId, CancellationToken cancellationToken = default);
+    Task IncrementLikesAsync(int imageId, CancellationToken cancellationToken = default);
+    Task IncrementSharesAsync(int imageId, CancellationToken cancellationToken = default);
+    Task RemoveAsync(ImageStats entity, CancellationToken cancellationToken = default);
 }

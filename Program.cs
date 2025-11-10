@@ -4,13 +4,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Models;
 using Npgsql;
-using Npgsql.EntityFrameworkCore.PostgreSQL;
 using Options;
 using Repositories;
 using Services.Image;
 using Services.ImageCollection;
-using Services.Identity;
 using Services.User;
+using Services.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,17 +27,47 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 });
 
 builder.Services.AddScoped<ImageRepository>();
+builder.Services.AddScoped<IImageRepository>(sp => sp.GetRequiredService<ImageRepository>());
 builder.Services.AddScoped<ImageStatsRepository>();
+builder.Services.AddScoped<IImageStatsRepository>(
+    sp => sp.GetRequiredService<ImageStatsRepository>()
+);
 builder.Services.AddScoped<ImageCommentRepository>();
+builder.Services.AddScoped<IImageCommentRepository>(
+    sp => sp.GetRequiredService<ImageCommentRepository>()
+);
 builder.Services.AddScoped<ImageCollectionRepository>();
+builder.Services.AddScoped<IImageCollectionRepository>(
+    sp => sp.GetRequiredService<ImageCollectionRepository>()
+);
 builder.Services.AddScoped<UserPreferencesRepository>();
+builder.Services.AddScoped<IUserPreferencesRepository>(
+    sp => sp.GetRequiredService<UserPreferencesRepository>()
+);
 builder.Services.AddScoped<UserConsumerHistoryRepository>();
+builder.Services.AddScoped<IUserConsumerHistoryRepository>(
+    sp => sp.GetRequiredService<UserConsumerHistoryRepository>()
+);
 builder.Services.AddScoped<UserProducerHistoryRepository>();
+builder.Services.AddScoped<IUserProducerHistoryRepository>(
+    sp => sp.GetRequiredService<UserProducerHistoryRepository>()
+);
 builder.Services.AddScoped<ImageAllowedUserRepository>();
+builder.Services.AddScoped<IImageAllowedUserRepository>(
+    sp => sp.GetRequiredService<ImageAllowedUserRepository>()
+);
 builder.Services.AddScoped<ImageCollectionAllowedUserRepository>();
+builder.Services.AddScoped<IImageCollectionAllowedUserRepository>(
+    sp => sp.GetRequiredService<ImageCollectionAllowedUserRepository>()
+);
 builder.Services.AddScoped<UserFavoriteTagRepository>();
+builder.Services.AddScoped<IUserFavoriteTagRepository>(
+    sp => sp.GetRequiredService<UserFavoriteTagRepository>()
+);
 builder.Services.AddScoped<ImageTagRepository>();
+builder.Services.AddScoped<IImageTagRepository>(sp => sp.GetRequiredService<ImageTagRepository>());
 builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<IUserRepository>(sp => sp.GetRequiredService<UserRepository>());
 
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IImageStatsService, ImageStatsService>();
@@ -54,7 +83,6 @@ builder.Services.AddScoped<IUserProducerHistoryService, UserProducerHistoryServi
 builder.Services.AddScoped<IUserFavoriteTagService, UserFavoriteTagService>();
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services.Configure<BlobStorageOptions>(builder.Configuration.GetSection("BlobStorage"));
 
@@ -74,6 +102,20 @@ builder.Services.AddKeyedSingleton<BlobContainerClient>(
 builder.Services.AddKeyedSingleton<BlobContainerClient>(
     "PrivateImages",
     (sp, _) => sp.GetRequiredService<BlobContainerClients>().Private
+);
+builder.Services.AddKeyedSingleton<IBlobContainerClient>(
+    "PublicImages",
+    (sp, _) =>
+        new BlobContainerClientAdapter(
+            sp.GetRequiredService<BlobContainerClients>().Public
+        )
+);
+builder.Services.AddKeyedSingleton<IBlobContainerClient>(
+    "PrivateImages",
+    (sp, _) =>
+        new BlobContainerClientAdapter(
+            sp.GetRequiredService<BlobContainerClients>().Private
+        )
 );
 
 var app = builder.Build();

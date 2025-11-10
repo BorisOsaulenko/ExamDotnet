@@ -3,28 +3,24 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Models;
 using Repositories;
-using Services.Identity;
 using Services.Util;
-using ImageModel = Models.Image;
+using ImageStatsModel = Models.ImageStats;
 
 namespace Services.Image;
 
 public partial class ImageCommentService : IImageCommentService
 {
     public ImageCommentService(
-        ImageCommentRepository repository,
-        ImageRepository imageRepository,
-        ICurrentUserService currentUserService
+        IImageCommentRepository repository,
+        IImageStatsRepository imageStatsRepository
     )
     {
         _repository = repository;
-        _imageRepository = imageRepository;
-        _currentUserService = currentUserService;
+        _imageStatsRepository = imageStatsRepository;
     }
 
-    private readonly ImageCommentRepository _repository;
-    private readonly ImageRepository _imageRepository;
-    private readonly ICurrentUserService _currentUserService;
+    private readonly IImageCommentRepository _repository;
+    private readonly IImageStatsRepository _imageStatsRepository;
 
     public async Task<ImageComment> AddAsync(
         ImageComment entity,
@@ -32,11 +28,11 @@ public partial class ImageCommentService : IImageCommentService
     )
     {
         CreateImageCommentValidator().ValidateAndThrow(entity);
-        ImageModel? image = await _imageRepository
+        ImageStatsModel? image = await _imageStatsRepository
             .GetByIdAsync(cancellationToken, entity.ImageId)
             .ConfigureAwait(false);
 
-        if (image == null || !ServiceUtils.UserHasAccess(image, entity.UserId))
+        if (image == null || !ServiceUtils.Image.UserHasAccess(image, entity.UserId))
         {
             throw new UnauthorizedAccessException(
                 "You do not have permission to comment on this image."
@@ -46,63 +42,64 @@ public partial class ImageCommentService : IImageCommentService
     }
 
     public Task<List<ImageComment>> GetByPredicateAsync(
+        string currentUserId,
         Expression<Func<ImageComment, bool>> predicate,
+        PaginationParams pagination,
         CancellationToken cancellationToken = default
     )
     {
-        string currentUserId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
-        var accessPredicate = ServiceUtils.BuildAccessPredicate(currentUserId);
+        var accessPredicate = ServiceUtils.Image.BuildAccessPredicate(currentUserId);
 
         IQueryable<ImageComment> q = _repository
             .Query()
             .Where(predicate)
             .Join(
-                _imageRepository.Query().Where(accessPredicate),
+                _imageStatsRepository.Query().Where(accessPredicate),
                 comment => comment.ImageId,
                 image => image.Id,
                 (comment, image) => new { comment, image }
             )
-            .Select(joined => joined.comment);
+            .Select(joined => joined.comment)
+            .Skip(pagination.Skip)
+            .Take(pagination.Size);
         return q.ToListAsync(cancellationToken);
     }
 
-    public async Task Remove(ImageComment entity, CancellationToken cancellationToken = default)
+    public async Task RemoveAsync(
+        ImageComment entity,
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentNullException.ThrowIfNull(entity);
-
-        string currentUserId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
 
         ImageComment? existingComment = await _repository
             .GetByIdAsync(cancellationToken, entity.Id)
             .ConfigureAwait(false);
 
-        if (existingComment == null || existingComment.UserId != currentUserId)
+        if (existingComment == null || existingComment.UserId != entity.UserId)
         {
-            throw new UnauthorizedAccessException(
-                "Comment does not exist or you do not have permission to delete it."
-            );
+            throw new InvalidOperationException("Comment does not exist.");
         }
 
         _repository.Remove(existingComment);
         await _repository.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task Update(ImageComment entity, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(
+        ImageComment entity,
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentNullException.ThrowIfNull(entity);
         CreateImageCommentValidator().ValidateAndThrow(entity);
-
-        string currentUserId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
 
         ImageComment? existingComment = await _repository
             .GetByIdAsync(cancellationToken, entity.Id)
             .ConfigureAwait(false);
 
-        if (existingComment == null || existingComment.UserId != currentUserId)
+        if (existingComment == null || existingComment.UserId != entity.UserId)
         {
-            throw new UnauthorizedAccessException(
-                "Comment does not exist or you do not have permission to delete it."
-            );
+            throw new InvalidOperationException("Comment does not exist.");
         }
 
         _repository.Update(entity);

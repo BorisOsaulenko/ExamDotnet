@@ -1,99 +1,66 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Threading;
-using System.Threading.Tasks;
-using Azure.Storage.Blobs;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using Models;
-using Services.Util;
+using ImageCollectionModel = Models.ImageCollection;
 using ImageModel = Models.Image;
 
 namespace Services.Image;
 
 public partial class ImageService
 {
-    public async Task Update(ImageModel entity, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(ImageModel entity, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
         CreateImageValidator().ValidateAndThrow(entity);
 
-        var currentUserId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
-
-        var existingImage =
-            await _repository
-                .Query()
-                .Where(image => image.Id == entity.Id && image.UserId == currentUserId)
-                .FirstOrDefaultAsync(cancellationToken)
+        ImageModel existingImage =
+            await _repository.GetByIdAsync(cancellationToken, entity.Id)
             ?? throw new KeyNotFoundException("Image not found.");
 
-        if (existingImage.AccessLevel != entity.AccessLevel)
+        if (existingImage.UserId != entity.UserId)
         {
-            await MoveBlobAsync(existingImage, entity.AccessLevel, cancellationToken);
-            entity.ContainerName = existingImage.ContainerName;
-            entity.BlobUri = existingImage.BlobUri;
-            entity.BlobName = existingImage.BlobName;
+            throw new UnauthorizedAccessException(
+                "You do not have permission to update this image."
+            );
         }
 
-        _repository.Update(entity);
+        if (entity.ImageCollectionId != null)
+        {
+            ImageCollectionModel? imageCollection = await _imageCollectionRepository
+                .GetByIdAsync(cancellationToken, entity.ImageCollectionId)
+                .ConfigureAwait(false);
+
+            if (imageCollection == null || imageCollection.UserId != entity.UserId)
+            {
+                throw new InvalidOperationException("Image collection does not exist.");
+            }
+        }
+
+        existingImage.AccessLevel = entity.AccessLevel;
+        existingImage.Title = entity.Title;
+        existingImage.Description = entity.Description;
+        existingImage.ImageCollectionId = entity.ImageCollectionId;
+        existingImage.Location = entity.Location;
+
+        _repository.Update(existingImage);
         await _repository.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task Remove(ImageModel entity, CancellationToken cancellationToken = default)
+    public async Task RemoveAsync(ImageModel entity, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        var currentUserId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
+        ImageModel? existingImage = await _repository
+            .GetByIdAsync(cancellationToken, entity.Id)
+            .ConfigureAwait(false);
 
-        var existingImage = await _repository
-            .Query()
-            .Where(image => image.Id == entity.Id && image.UserId == currentUserId)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (existingImage is null)
+        if (existingImage is null || existingImage.UserId != entity.UserId)
         {
             return;
         }
 
-        var container = GetContainerClientForImage(existingImage);
-        var blobClient = container.GetBlobClient(existingImage.BlobName);
-        await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+        await _containerClient.DeleteIfExistsAsync(existingImage.BlobName, cancellationToken);
 
         _repository.Remove(existingImage);
-    }
-
-    public Task<bool> ExistsAsync(
-        Expression<Func<ImageModel, bool>> predicate,
-        CancellationToken cancellationToken = default
-    ) => _repository.ExistsAsync(predicate, cancellationToken);
-
-    public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
-        _repository.SaveChangesAsync(cancellationToken);
-
-    private async Task MoveBlobAsync(
-        ImageModel sourceImage,
-        ImageAccessLevel targetAccessLevel,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var sourceContainer = GetContainerClientForAccessLevel(sourceImage.AccessLevel);
-        var destinationContainer = GetContainerClientForAccessLevel(targetAccessLevel);
-
-        if (sourceContainer.Name == destinationContainer.Name)
-        {
-            return;
-        }
-
-        var sourceBlob = sourceContainer.GetBlobClient(sourceImage.BlobName);
-        var destinationBlob = destinationContainer.GetBlobClient(sourceImage.BlobName);
-
-        destinationBlob.SyncCopyFromUri(sourceBlob.Uri, cancellationToken: cancellationToken);
-        await sourceBlob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
-
-        sourceImage.ContainerName = destinationContainer.Name;
-        sourceImage.BlobUri = destinationBlob.Uri.ToString();
-        sourceImage.AccessLevel = targetAccessLevel;
+        await _repository.SaveChangesAsync(cancellationToken);
     }
 }

@@ -1,6 +1,5 @@
 using FluentValidation;
 using Models;
-using Services.Util;
 using ImageModel = Models.Image;
 
 namespace Services.Image;
@@ -32,11 +31,6 @@ public partial class ImageService
         validator.RuleFor(image => image.UserId).NotEmpty().WithMessage("UserId is required.");
 
         validator
-            .RuleFor(image => image.ContainerName)
-            .NotEmpty()
-            .WithMessage("ContainerName is required.");
-
-        validator
             .RuleFor(image => image.AccessLevel)
             .IsInEnum()
             .WithMessage("AccessLevel must be a valid enum value.");
@@ -58,16 +52,6 @@ public partial class ImageService
             .WithMessage(
                 "When AccessLevel is 'AllowedUsers', at least one allowed user must be specified."
             );
-
-        validator
-            .RuleFor(image => image.UserId)
-            .NotEmpty()
-            .WithMessage("UserId is required.")
-            .Must(userId =>
-            {
-                string currentUserId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
-                return userId == currentUserId;
-            });
 
         return validator;
     }

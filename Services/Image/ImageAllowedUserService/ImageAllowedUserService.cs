@@ -1,27 +1,21 @@
-using System.Linq.Expressions;
 using Models;
 using Repositories;
-using Services.Identity;
-using Services.Util;
 using ImageModel = Models.Image;
 
 namespace Services.Image;
 
 public class ImageAllowedUserService : IImageAllowedUserService
 {
-    private readonly ImageAllowedUserRepository _repository;
-    private readonly ImageRepository _imageRepository;
-    private readonly ICurrentUserService _currentUserService;
+    private readonly IImageAllowedUserRepository _repository;
+    private readonly IImageRepository _imageRepository;
 
     public ImageAllowedUserService(
-        ImageAllowedUserRepository repository,
-        ImageRepository imageRepository,
-        ICurrentUserService currentUserService
+        IImageAllowedUserRepository repository,
+        IImageRepository imageRepository
     )
     {
         _repository = repository;
         _imageRepository = imageRepository;
-        _currentUserService = currentUserService;
     }
 
     public async Task<ImageAllowedUser> AddAsync(
@@ -29,41 +23,62 @@ public class ImageAllowedUserService : IImageAllowedUserService
         CancellationToken cancellationToken = default
     )
     {
-        string currentUserId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
         ImageModel? image = await _imageRepository
             .GetByIdAsync(cancellationToken, entity.ImageId)
             .ConfigureAwait(false);
 
-        if (image == null || image.UserId != currentUserId)
+        if (image == null || image.Id != entity.ImageId)
         {
-            throw new UnauthorizedAccessException(
-                "You do not have permission to modify this image."
-            );
+            throw new InvalidOperationException("Image does not exist.");
         }
         return await _repository.AddAsync(entity, cancellationToken).ConfigureAwait(false);
     }
 
-    public Task<List<ImageAllowedUser>> GetByPredicateAsync(
-        Expression<Func<ImageAllowedUser, bool>> predicate,
+    public async Task RemoveAsync(
+        ImageAllowedUser entity,
         CancellationToken cancellationToken = default
     )
     {
-        return _repository.GetByPredicateAsync(predicate, cancellationToken);
-    }
-
-    public async Task Remove(ImageAllowedUser entity, CancellationToken cancellationToken = default)
-    {
-        string currentUserId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
-        ImageModel? image = await _imageRepository.GetByIdAsync(cancellationToken, entity.ImageId);
-
-        if (image == null || image.UserId != currentUserId)
+        ImageAllowedUser? existingEntity = await _repository
+            .GetByIdAsync(cancellationToken, entity.Id)
+            .ConfigureAwait(false);
+        if (existingEntity == null || existingEntity.Id != entity.Id)
         {
-            throw new UnauthorizedAccessException(
-                "You do not have permission to modify this image."
-            );
+            throw new InvalidOperationException("Entity does not exist.");
         }
 
         _repository.Remove(entity);
+        await _repository.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task RemoveAllForImageAsync(
+        int imageId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        List<ImageAllowedUser> allowedUsers = await _repository.GetByPredicateAsync(
+            au => au.ImageId == imageId,
+            cancellationToken
+        );
+
+        if (allowedUsers.Count == 0)
+            return;
+
+        _repository.RemoveRange(allowedUsers);
+        await _repository.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task RemoveAllForUserAsync(
+        string userId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        List<ImageAllowedUser> allowedUsers = await _repository.GetByPredicateAsync(
+            au => au.UserId == userId,
+            cancellationToken
+        );
+
+        _repository.RemoveRange(allowedUsers);
         await _repository.SaveChangesAsync(cancellationToken);
     }
 }

@@ -1,12 +1,6 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using FluentValidation;
-using Models;
-using Services.Util;
+using ImageCollectionModel = Models.ImageCollection;
 using ImageModel = Models.Image;
 
 namespace Services.Image;
@@ -16,26 +10,32 @@ public partial class ImageService
     public async Task<ImageModel> AddAsync(
         ImageModel image,
         Stream imageStream,
-        ImageContentType contentType,
         CancellationToken cancellationToken = default
     )
     {
-        var currentUserId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
-        image.UserId = currentUserId;
         image.Id = 0;
-
         CreateImageValidator().ValidateAndThrow(image);
 
-        var container = GetContainerClientForImage(image);
-        var blobName = GenerateBlobName(currentUserId);
-        var blobClient = container.GetBlobClient(blobName);
+        if (image.ImageCollectionId != null)
+        {
+            ImageCollectionModel? imageCollection = await _imageCollectionRepository
+                .GetByIdAsync(cancellationToken, image.ImageCollectionId)
+                .ConfigureAwait(false);
 
+            if (imageCollection == null || imageCollection.UserId != image.UserId)
+            {
+                throw new InvalidOperationException("Image collection does not exist.");
+            }
+        }
+
+        string blobName = GenerateBlobName(image.UserId);
         try
         {
-            await blobClient.UploadAsync(
+            await _containerClient.UploadAsync(
+                blobName,
                 imageStream,
-                new BlobHttpHeaders { ContentType = GetMimeType(contentType) },
-                cancellationToken: cancellationToken
+                new BlobHttpHeaders { ContentType = GetMimeType(image.ContentType) },
+                cancellationToken
             );
         }
         catch (Exception ex)
@@ -44,8 +44,7 @@ public partial class ImageService
         }
 
         image.BlobName = blobName;
-        image.ContainerName = container.Name;
-        image.BlobUri = blobClient.Uri.ToString();
+        image.BlobUri = _containerClient.GetBlobUri(blobName).ToString();
 
         return await _repository.AddAsync(image, cancellationToken);
     }

@@ -12,23 +12,6 @@ public enum ImageContentType
     WebP,
 }
 
-public static class ImageContentTypeExtensions
-{
-    public static string ToMimeType(this ImageContentType contentType)
-    {
-        return contentType switch
-        {
-            ImageContentType.Png => "image/png",
-            ImageContentType.Jpeg => "image/jpeg",
-            ImageContentType.Gif => "image/gif",
-            ImageContentType.Bmp => "image/bmp",
-            ImageContentType.Tiff => "image/tiff",
-            ImageContentType.WebP => "image/webp",
-            _ => throw new ArgumentOutOfRangeException(nameof(contentType)),
-        };
-    }
-}
-
 public enum ImageAccessLevel
 {
     Public,
@@ -38,10 +21,13 @@ public enum ImageAccessLevel
 
 public class Image
 {
+    public static readonly int MaxTitleLength = 200;
+    public static readonly int MaxLocationLength = 100;
+    public static readonly int MaxDescriptionLength = 2000;
+
     public int Id { get; set; }
 
     public required string BlobUri { get; set; } // without SAS
-    public required string ContainerName { get; set; }
     public required string BlobName { get; set; }
 
     public ImageContentType ContentType { get; set; }
@@ -60,7 +46,6 @@ public class Image
     [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
     public DateTime EditedAt { get; set; }
 
-    public ICollection<ImageComment> Comments { get; set; } = [];
     public ImageStats? Stats { get; set; }
 
     public int? ImageCollectionId { get; set; }

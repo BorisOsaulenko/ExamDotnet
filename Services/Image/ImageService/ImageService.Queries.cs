@@ -1,8 +1,4 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Services.Util;
 using ImageModel = Models.Image;
@@ -12,43 +8,51 @@ namespace Services.Image;
 public partial class ImageService
 {
     public async Task<List<ImageModel>> GetWithPaginationAsync(
-        int skip,
-        int size,
+        string userId,
+        PaginationParams pagination,
         CancellationToken cancellationToken = default
     )
     {
-        var userId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
-
-        return await ServiceUtils
-            .ApplyAccessFilter(_repository.Query(), userId)
+        List<ImageModel> imagesNoSAS = await ServiceUtils
+            .Image.ApplyAccessFilter(_repository.Query(), userId)
             .AsNoTracking()
             .OrderBy(image => image.Id)
-            .Skip(skip)
-            .Take(size)
+            .Skip(pagination.Skip)
+            .Take(pagination.Size)
             .ToListAsync(cancellationToken);
+
+        return imagesNoSAS.Select(image => AttachSASInfo(image, userId)).ToList();
     }
 
     public async Task<List<ImageModel>> GetByPredicateAsync(
+        string userId,
         Expression<Func<ImageModel, bool>> predicate,
+        PaginationParams pagination,
         CancellationToken cancellationToken = default
     )
     {
-        var userId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
+        IQueryable<ImageModel> query = ServiceUtils
+            .Image.ApplyAccessFilter(_repository.Query().Where(predicate), userId)
+            .AsNoTracking()
+            .OrderBy(image => image.Id)
+            .Skip(pagination.Skip)
+            .Take(pagination.Size);
 
-        return await ServiceUtils
-            .ApplyAccessFilter(_repository.Query().Where(predicate), userId)
-            .ToListAsync(cancellationToken);
+        List<ImageModel> imagesNoSAS = await query.ToListAsync(cancellationToken);
+
+        return imagesNoSAS.Select(image => AttachSASInfo(image, userId)).ToList();
     }
 
-    public Task<ImageModel?> GetImageByIdAsync(
+    public async Task<ImageModel?> GetImageByIdAsync(
+        string userId,
         int id,
         CancellationToken cancellationToken = default
     )
     {
-        var userId = ServiceUtils.GetCurrentUserIdOrThrow(_currentUserService);
-
-        return ServiceUtils
-            .ApplyAccessFilter(_repository.Query(), userId)
+        ImageModel? imageNoSAS = await ServiceUtils
+            .Image.ApplyAccessFilter(_repository.Query(), userId)
             .FirstOrDefaultAsync(image => image.Id == id, cancellationToken);
+
+        return imageNoSAS == null ? null : AttachSASInfo(imageNoSAS, userId);
     }
 }

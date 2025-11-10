@@ -35,6 +35,20 @@ public abstract class GenericRepository<TEntity>
         return Entities.Where(predicate).ToListAsync(cancellationToken);
     }
 
+    public virtual Task<List<TEntity>> GetWithPaginationAsync(
+        int skip,
+        int size,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (skip < 0 || size <= 0)
+            throw new ArgumentOutOfRangeException(
+                "Skip must be non-negative and size must be positive."
+            );
+
+        return Entities.Skip(skip).Take(size).ToListAsync(cancellationToken);
+    }
+
     public virtual ValueTask<TEntity?> FindByKeyAsync(
         CancellationToken cancellationToken = default,
         params object[] keyValues
@@ -79,6 +93,12 @@ public abstract class GenericRepository<TEntity>
     {
         ArgumentNullException.ThrowIfNull(entity);
         Entities.Remove(entity);
+    }
+
+    public virtual void RemoveRange(IEnumerable<TEntity> entities)
+    {
+        ArgumentNullException.ThrowIfNull(entities);
+        Entities.RemoveRange(entities);
     }
 
     public virtual Task<bool> ExistsAsync(

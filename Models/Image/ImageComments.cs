@@ -4,16 +4,18 @@ namespace Models;
 
 public class ImageComment
 {
+    public static readonly int MaxContentLength = 1000;
+
     public int Id { get; set; }
 
-    public int ImageId { get; set; }
-    public Image? Image { get; set; }
-
+    public int ImageStatsId { get; set; }
+    public ImageStats? ImageStats { get; set; }
 
     public required string UserId { get; set; }
     public User? User { get; set; }
 
     public required string Content { get; set; }
+
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

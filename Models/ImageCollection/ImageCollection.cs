@@ -11,6 +11,9 @@ public enum ImageCollectionAccessLevel
 
 public class ImageCollection
 {
+    public static readonly int MaxTitleLength = 200;
+    public static readonly int MaxDescriptionLength = 2000;
+
     public int Id { get; set; }
     public required string Title { get; set; }
     public string? Description { get; set; }

@@ -1,45 +1,73 @@
-using Azure.Storage.Blobs;
+using Azure.Storage.Sas;
 using Models;
 using Repositories;
-using Services.Identity;
+using Services.Storage;
 using ImageModel = Models.Image;
 
 namespace Services.Image;
 
 public partial class ImageService : IImageService
 {
-    private readonly ImageRepository _repository;
-    private readonly BlobContainerClient _publicContainerClient;
-    private readonly BlobContainerClient _privateContainerClient;
-    private readonly ICurrentUserService _currentUserService;
+    private readonly IImageRepository _repository;
+    private readonly IBlobContainerClient _containerClient;
+    private readonly IImageCollectionRepository _imageCollectionRepository;
 
     public ImageService(
-        ImageRepository repository,
-        [FromKeyedServices("PublicImages")] BlobContainerClient publicContainerClient,
-        [FromKeyedServices("PrivateImages")] BlobContainerClient privateContainerClient,
-        ICurrentUserService currentUserService
+        IImageRepository repository,
+        [FromKeyedServices("PublicImages")] IBlobContainerClient containerClient,
+        IImageCollectionRepository imageCollectionRepository
     )
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _publicContainerClient =
-            publicContainerClient ?? throw new ArgumentNullException(nameof(publicContainerClient));
-        _privateContainerClient =
-            privateContainerClient
-            ?? throw new ArgumentNullException(nameof(privateContainerClient));
-        _currentUserService =
-            currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+        _containerClient =
+            containerClient ?? throw new ArgumentNullException(nameof(containerClient));
+        _imageCollectionRepository =
+            imageCollectionRepository
+            ?? throw new ArgumentNullException(nameof(imageCollectionRepository));
     }
 
-    private BlobContainerClient GetContainerClientForImage(ImageModel image) =>
-        image.AccessLevel == ImageAccessLevel.Public
-            ? _publicContainerClient
-            : _privateContainerClient;
-
-    private BlobContainerClient GetContainerClientForAccessLevel(ImageAccessLevel accessLevel) =>
-        accessLevel == ImageAccessLevel.Public ? _publicContainerClient : _privateContainerClient;
+    private static string GetMimeType(ImageContentType contentType) =>
+        contentType switch
+        {
+            ImageContentType.Jpeg => "image/jpeg",
+            ImageContentType.Png => "image/png",
+            ImageContentType.Gif => "image/gif",
+            ImageContentType.Bmp => "image/bmp",
+            ImageContentType.WebP => "image/webp",
+            _ => "application/octet-stream",
+        };
 
     private static string GenerateBlobName(string userId) => $"{userId}/{Guid.NewGuid():N}";
 
-    private static string GetMimeType(ImageContentType contentType) =>
-        ImageContentTypeExtensions.ToMimeType(contentType);
+    private static readonly TimeSpan DefaultSasLifetime = TimeSpan.FromMinutes(5);
+
+    private ImageModel AttachSASInfo(ImageModel image, string userId)
+    {
+        if (image == null || string.IsNullOrEmpty(image.BlobName))
+        {
+            throw new ArgumentNullException(nameof(image));
+        }
+
+        if (!_containerClient.CanGenerateSasUri)
+        {
+            throw new InvalidOperationException(
+                "BlobContainerClient is not authorized to generate SAS URIs."
+            );
+        }
+
+        var sasBuilder = new BlobSasBuilder
+        {
+            BlobContainerName = _containerClient.Name,
+            BlobName = image.BlobName,
+            Resource = "b",
+            StartsOn = DateTimeOffset.UtcNow.AddMinutes(-5),
+            ExpiresOn = DateTimeOffset.UtcNow.Add(DefaultSasLifetime),
+        };
+
+        sasBuilder.SetPermissions(BlobSasPermissions.Read);
+
+        Uri sasUri = _containerClient.GenerateSasUri(image.BlobName, sasBuilder);
+        image.BlobUri = sasUri.ToString();
+        return image;
+    }
 }

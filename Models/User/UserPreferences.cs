@@ -14,7 +14,8 @@ public class UserPreferences
     public required User User { get; set; }
     public bool ReceiveNotifications { get; set; }
     public ICollection<UserFavoriteTag> FavoriteTags { get; set; } = [];
-    public ICollection<string> FavoriteAuthors { get; set; } = [];
+    public ICollection<User> FavoriteAuthors { get; set; } = [];
     public ICollection<ImageCollection> SubscribedCollections { get; set; } = [];
+    public ICollection<ImageStats> LikedImages { get; set; } = [];
     public Theme Theme { get; set; } = Theme.SystemDefault;
 }
