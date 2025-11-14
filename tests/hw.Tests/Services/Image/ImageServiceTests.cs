@@ -1,11 +1,11 @@
 using Azure.Storage.Blobs.Models;
-using Microsoft.AspNetCore.Mvc;
 using Models;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Repositories;
+using Services.Azure;
 using Services.Image;
 using Services.Storage;
-using Xunit;
 using ImageModel = Models.Image;
 
 namespace hw.Tests.Services.Image;
@@ -18,6 +18,7 @@ public sealed class ImageServiceTests
     private readonly IImageMetadataRepository _imageMetadataRepositoryMock;
     private readonly IImageCollectionRepository _imageCollectionRepositoryMock;
     private readonly IBlobContainerClient _blobContainerClientMock;
+    private readonly IComputerVision _computerVisionMock;
 
     public ImageServiceTests()
     {
@@ -25,12 +26,14 @@ public sealed class ImageServiceTests
         _imageMetadataRepositoryMock = Substitute.For<IImageMetadataRepository>();
         _imageCollectionRepositoryMock = Substitute.For<IImageCollectionRepository>();
         _blobContainerClientMock = Substitute.For<IBlobContainerClient>();
+        _computerVisionMock = Substitute.For<IComputerVision>();
 
         _imageService = new ImageService(
             _imageRepositoryMock,
             _blobContainerClientMock,
             _imageCollectionRepositoryMock,
-            _imageMetadataRepositoryMock
+            _imageMetadataRepositoryMock,
+            _computerVisionMock
         );
     }
 
@@ -53,8 +56,11 @@ public sealed class ImageServiceTests
             .Returns(callInfo => new Uri($"https://cdn.local/{callInfo.Arg<string>()}"));
 
         _imageRepositoryMock
-            .AddAsync(Arg.Any<ImageModel>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => Task.FromResult(callInfo.Arg<ImageModel>()));
+            .AddAsync(Arg.Any<ImageModel>())
+            .Returns(callInfo => callInfo.Arg<ImageModel>());
+        _computerVisionMock
+            .EnsureSafeContentAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
 
         // Act
         ImageModel result = await _imageService.AddAsync(
@@ -80,20 +86,25 @@ public sealed class ImageServiceTests
                 Arg.Any<CancellationToken>()
             );
 
-        await _imageRepositoryMock
+        await _imageRepositoryMock.Received(1).AddAsync(Arg.Any<ImageModel>());
+        await _computerVisionMock
             .Received(1)
-            .AddAsync(Arg.Any<ImageModel>(), Arg.Any<CancellationToken>());
+            .EnsureSafeContentAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task ShouldDeleteImageAsync()
     {
-        ImageModel image = GetTestImage(customize: img => img.Id = 42);
+        ImageModel image = GetTestImage(customize: img =>
+        {
+            img.Id = 42;
+            img.BlobName = "test-blob-name";
+        });
         _imageRepositoryMock
             .GetByIdAsync(Arg.Any<CancellationToken>(), image.Id)
             .Returns(Task.FromResult<ImageModel?>(image));
         _blobContainerClientMock
-            .DeleteIfExistsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .DeleteIfExistsAsync(image.BlobName, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(true));
         // Act
         await _imageService.RemoveAsync(image.Id, CancellationToken.None);
@@ -129,7 +140,30 @@ public sealed class ImageServiceTests
         await _imageRepositoryMock.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
-    public static ImageModel GetTestImage(Action<ImageModel> customize = null)
+    [Fact]
+    public async Task ShouldNotUploadWhenVisionServiceRejectsImage()
+    {
+        _computerVisionMock
+            .EnsureSafeContentAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Image contains prohibited content."));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _imageService.AddAsync(ImageContentType.Jpeg, Stream.Null, CancellationToken.None)
+        );
+
+        await _blobContainerClientMock
+            .DidNotReceive()
+            .UploadAsync(
+                Arg.Any<string>(),
+                Arg.Any<Stream>(),
+                Arg.Any<BlobHttpHeaders>(),
+                Arg.Any<CancellationToken>()
+            );
+
+        await _imageRepositoryMock.DidNotReceive().AddAsync(Arg.Any<ImageModel>());
+    }
+
+    public static ImageModel GetTestImage(Action<ImageModel>? customize = null)
     {
         var image = new ImageModel { Id = 1, ContentType = ImageContentType.Jpeg };
         customize?.Invoke(image);

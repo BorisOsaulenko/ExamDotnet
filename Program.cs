@@ -1,17 +1,44 @@
+using Azure;
+using Azure.AI.ContentSafety;
 using Azure.Storage;
 using Azure.Storage.Blobs;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Models;
 using Npgsql;
 using Options;
 using Repositories;
+using Services.Azure;
 using Services.Image;
 using Services.ImageCollection;
 using Services.Storage;
+using Serilog;
 using Services.User;
 
+async Task SeedRolesAsync(IServiceProvider sp)
+{
+    var roles = new[] { "Admin", "Moderator", "BasicUser" };
+    var roleManager = sp.GetRequiredService<RoleManager<IdentityRole>>();
+
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+            await roleManager.CreateAsync(new IdentityRole(role));
+    }
+}
+
 var builder = WebApplication.CreateBuilder(args);
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .WriteTo.File("Logs/app.log", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
+builder.Services.AddControllers();
 
 // Add services to the container.
 builder.Services.AddRazorPages();
@@ -25,6 +52,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
     options.UseNpgsql(connectionString);
 });
+
+builder.Services
+    .AddDefaultIdentity<User>(options =>
+    {
+        options.SignIn.RequireConfirmedAccount = false;
+    })
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders()
+    .AddDefaultUI();
 
 builder.Services.AddScoped<ImageRepository>();
 builder.Services.AddScoped<IImageRepository>(sp => sp.GetRequiredService<ImageRepository>());
@@ -83,7 +120,6 @@ builder.Services.AddScoped<IImageAllowedUserService, ImageAllowedUserService>();
 builder.Services.AddScoped<IImageTagService, ImageTagService>();
 builder.Services.AddScoped<IImageCollectionService, ImageCollectionService>();
 builder.Services.AddScoped<IImageCollectionAllowedUserService, ImageCollectionAllowedUserService>();
-builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserPreferencesService, UserPreferencesService>();
 builder.Services.AddScoped<IUserConsumerHistoryService, UserConsumerHistoryService>();
 builder.Services.AddScoped<IUserProducerHistoryService, UserProducerHistoryService>();
@@ -92,6 +128,9 @@ builder.Services.AddScoped<IUserFavoriteTagService, UserFavoriteTagService>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.Configure<BlobStorageOptions>(builder.Configuration.GetSection("BlobStorage"));
+builder.Services.Configure<ComputerVisionOptions>(
+    builder.Configuration.GetSection("ComputerVision")
+);
 
 builder.Services.AddSingleton(provider =>
 {
@@ -104,22 +143,34 @@ builder.Services.AddSingleton(provider =>
 builder.Services.AddSingleton<BlobContainerClients>();
 builder.Services.AddKeyedSingleton<BlobContainerClient>(
     "PublicImages",
-    (sp, _) => sp.GetRequiredService<BlobContainerClients>().Public
-);
-builder.Services.AddKeyedSingleton<BlobContainerClient>(
-    "PrivateImages",
-    (sp, _) => sp.GetRequiredService<BlobContainerClients>().Private
+    (sp, _) => sp.GetRequiredService<BlobContainerClients>().Container
 );
 builder.Services.AddKeyedSingleton<IBlobContainerClient>(
     "PublicImages",
-    (sp, _) => new BlobContainerClientAdapter(sp.GetRequiredService<BlobContainerClients>().Public)
-);
-builder.Services.AddKeyedSingleton<IBlobContainerClient>(
-    "PrivateImages",
-    (sp, _) => new BlobContainerClientAdapter(sp.GetRequiredService<BlobContainerClients>().Private)
+    (sp, _) => new BlobContainerClientAdapter(sp.GetRequiredService<BlobContainerClients>().Container)
 );
 
+builder.Services.AddSingleton(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<ComputerVisionOptions>>().Value;
+
+    if (string.IsNullOrWhiteSpace(options.Endpoint) || string.IsNullOrWhiteSpace(options.ApiKey))
+    {
+        throw new InvalidOperationException("Computer Vision settings are missing.");
+    }
+
+    return new ContentSafetyClient(
+        new Uri(options.Endpoint),
+        new AzureKeyCredential(options.ApiKey)
+    );
+});
+builder.Services.AddScoped<IComputerVision, ComputerVisionService>();
+
 var app = builder.Build();
+app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+    await SeedRolesAsync(scope.ServiceProvider);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -133,10 +184,11 @@ app.UseHttpsRedirection();
 
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
-app.MapRazorPages().WithStaticAssets();
+app.MapRazorPages();
 
 app.Run();
 

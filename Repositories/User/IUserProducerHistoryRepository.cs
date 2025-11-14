@@ -2,5 +2,4 @@ using Models;
 
 namespace Repositories;
 
-public interface IUserProducerHistoryRepository
-    : IGenericRepository<UserProducerHistory> { }
+public interface IUserProducerHistoryRepository : IGenericRepository<UserProducerHistory> { }

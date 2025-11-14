@@ -1,33 +1,27 @@
-using Azure.Storage.Blobs;
+using System.Linq.Expressions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Models;
 using Repositories;
+using Services.Storage;
 using Services.Util;
 using ImageCollectionModel = Models.ImageCollection;
-using ImageModel = Models.Image;
 
 namespace Services.ImageCollection;
 
 public partial class ImageCollectionService : IImageCollectionService
 {
     public ImageCollectionService(
-        ImageCollectionRepository repository,
-        ImageMetadataRepository imageMetadataRepository,
-        [FromKeyedServices("PublicImages")] BlobContainerClient publicContainerClient,
-        [FromKeyedServices("PrivateImages")] BlobContainerClient privateContainerClient
+        IImageCollectionRepository repository,
+        IImageMetadataRepository imageMetadataRepository
     )
     {
         _repository = repository;
         _imageMetadataRepository = imageMetadataRepository;
-        _publicContainerClient = publicContainerClient;
-        _privateContainerClient = privateContainerClient;
     }
 
-    private readonly ImageCollectionRepository _repository;
-    private readonly ImageMetadataRepository _imageMetadataRepository;
-    private readonly BlobContainerClient _publicContainerClient;
-    private readonly BlobContainerClient _privateContainerClient;
+    private readonly IImageCollectionRepository _repository;
+    private readonly IImageMetadataRepository _imageMetadataRepository;
 
     public async Task<ImageCollectionModel> AddAsync(
         ImageCollectionModel entity,
@@ -36,20 +30,28 @@ public partial class ImageCollectionService : IImageCollectionService
     {
         CreateImageCollectionValidator().ValidateAndThrow(entity);
 
-        return await _repository.AddAsync(entity, cancellationToken);
+        bool isCoverImageValid = await CheckCoverImageAsync(entity, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!isCoverImageValid)
+            throw new UnauthorizedAccessException(
+                "Cover image does not belong to this image collection."
+            );
+
+        return await Task.FromResult(await _repository.AddAsync(entity, cancellationToken));
     }
 
     public async Task<List<ImageCollectionModel>> GetByPredicateAsync(
-        System.Linq.Expressions.Expression<Func<ImageCollectionModel, bool>> predicate,
+        Expression<Func<ImageCollectionModel, bool>> predicate,
         string currentUserId,
         CancellationToken cancellationToken = default
     )
     {
-        IQueryable<ImageCollectionModel> query = _repository.Query();
-        query = query.Where(predicate);
+        IQueryable<ImageCollectionModel> query = BuildCollectionQuery().Where(predicate);
         query = ServiceUtils.ImageCollection.ApplyUserFilter(query, currentUserId);
 
-        return await query.AsNoTracking().ToListAsync(cancellationToken);
+        List<ImageCollectionModel> result = query.ToList();
+        return await Task.FromResult(result);
     }
 
     public async Task UpdateAsync(
@@ -71,9 +73,12 @@ public partial class ImageCollectionService : IImageCollectionService
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        ImageCollectionModel? existingEntity =
-            await _repository.GetByIdAsync(cancellationToken, entity.Id).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("Image collection does not exist.");
+        ImageCollectionModel? existingEntity = await _repository
+            .GetByIdAsync(cancellationToken, entity.Id)
+            .ConfigureAwait(false);
+
+        if (existingEntity == null || existingEntity.UserId != entity.UserId)
+            throw new InvalidOperationException("Image collection does not exist.");
 
         _repository.Remove(existingEntity);
         await _repository.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -95,17 +100,14 @@ public partial class ImageCollectionService : IImageCollectionService
             throw new InvalidOperationException("Image collection does not exist.");
         }
 
-        if (entity.CoverImageMetadataId != null)
+        bool isCoverImageValid = await CheckCoverImageAsync(entity, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!isCoverImageValid)
         {
-            ImageMetadata? coverImage = await _imageMetadataRepository
-                .GetByIdAsync(cancellationToken, entity.CoverImageMetadataId)
-                .ConfigureAwait(false);
-            if (coverImage == null || coverImage.ImageCollectionId != entity.Id)
-            {
-                throw new UnauthorizedAccessException(
-                    "Cover image does not belong to this image collection."
-                );
-            }
+            throw new UnauthorizedAccessException(
+                "Cover image does not belong to this image collection."
+            );
         }
 
         existingEntity.Title = entity.Title;
@@ -113,9 +115,37 @@ public partial class ImageCollectionService : IImageCollectionService
         existingEntity.AccessLevel = entity.AccessLevel;
         existingEntity.CoverImageMetadataId = entity.CoverImageMetadataId;
 
-        _repository.Update(existingEntity);
-        await _repository.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
         return existingEntity;
     }
+
+    private async Task<bool> CheckCoverImageAsync(
+        ImageCollectionModel imageCollection,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (imageCollection.CoverImageMetadataId == null)
+            return true;
+
+        ImageMetadata? coverImage = await _imageMetadataRepository
+            .GetByIdAsync(cancellationToken, imageCollection.CoverImageMetadataId.Value)
+            .ConfigureAwait(false);
+
+        return coverImage != null && coverImage.ImageCollectionId == imageCollection.Id;
+    }
+
+    private IQueryable<ImageCollectionModel> BuildCollectionQuery() =>
+        _repository
+            .Query()
+            .Include(collection => collection.Images)
+                .ThenInclude(image => image.Image)
+            .Include(collection => collection.Images)
+                .ThenInclude(image => image.Tags)
+            .Include(collection => collection.Images)
+                .ThenInclude(image => image.AllowedUsers)
+            .Include(collection => collection.Images)
+                .ThenInclude(image => image.ImageStats)
+            .Include(collection => collection.AllowedUsers)
+            .Include(collection => collection.CoverImageMetadata)
+            .Include(collection => collection.Subscribers)
+            .AsNoTracking();
 }

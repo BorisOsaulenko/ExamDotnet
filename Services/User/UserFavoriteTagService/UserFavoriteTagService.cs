@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using Models;
 using Repositories;
 
@@ -6,41 +6,49 @@ namespace Services.User;
 
 public class UserFavoriteTagService : IUserFavoriteTagService
 {
-    public UserFavoriteTagService(UserFavoriteTagRepository repository)
+    public UserFavoriteTagService(
+        IUserFavoriteTagRepository repository,
+        IUserPreferencesRepository preferencesRepository
+    )
     {
-        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _repository = repository;
+        _preferencesRepository = preferencesRepository;
     }
 
-    private readonly UserFavoriteTagRepository _repository;
+    private readonly IUserFavoriteTagRepository _repository;
+    private readonly IUserPreferencesRepository _preferencesRepository;
 
     public async Task<UserFavoriteTag> AddAsync(
+        string userId,
         UserFavoriteTag entity,
         CancellationToken cancellationToken = default
     )
     {
-        UserFavoriteTag? existingEntity = await _repository
-            .Query()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                tag => tag.UserPreferencesId == entity.UserPreferencesId && tag.Tag == entity.Tag,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
+        await CheckUserPreferencesOwnership(userId, entity.UserPreferencesId).ConfigureAwait(false);
+
+        UserFavoriteTag? existingEntity = await Task.FromResult(
+            _repository
+                .Query()
+                .FirstOrDefault(tag =>
+                    tag.UserPreferencesId == entity.UserPreferencesId && tag.Tag == entity.Tag
+                )
+        );
 
         if (existingEntity != null)
-        {
             throw new InvalidOperationException("Entity already exists.");
-        }
 
         entity.Id = 0;
-        return await _repository.AddAsync(entity, cancellationToken).ConfigureAwait(false);
+        return await Task.FromResult(await _repository.AddAsync(entity));
     }
 
     public async Task RemoveAsync(
+        string userId,
         UserFavoriteTag entity,
         CancellationToken cancellationToken = default
     )
     {
+        await CheckUserPreferencesOwnership(userId, entity.UserPreferencesId).ConfigureAwait(false);
+
         UserFavoriteTag existingEntity =
             await _repository.GetByIdAsync(cancellationToken, entity.Id).ConfigureAwait(false)
             ?? throw new InvalidOperationException("Entity does not exist.");
@@ -54,13 +62,21 @@ public class UserFavoriteTagService : IUserFavoriteTagService
         CancellationToken cancellationToken = default
     )
     {
-        var userFavoriteTags = await _repository
-            .Query()
-            .Where(tag => tag.UserPreferencesId == userPreferencesId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
+        var userFavoriteTags = await Task.FromResult(
+            _repository.Query().Where(tag => tag.UserPreferencesId == userPreferencesId).ToList()
+        );
 
         _repository.RemoveRange(userFavoriteTags);
         await _repository.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task CheckUserPreferencesOwnership(string userId, int preferencesId)
+    {
+        var preferences =
+            await Task.FromResult(
+                _preferencesRepository
+                    .Query()
+                    .FirstOrDefault(pref => pref.UserId == userId && pref.Id == preferencesId)
+            ) ?? throw new InvalidOperationException("User preferences not found.");
     }
 }

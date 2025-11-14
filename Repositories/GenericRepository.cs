@@ -65,22 +65,33 @@ public abstract class GenericRepository<TEntity>
         return Entities.FindAsync(keyValues, cancellationToken);
     }
 
-    public virtual Task<TEntity> AddAsync(
+    public virtual TEntity Add(TEntity entity)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+        Entities.Add(entity);
+
+        return entity;
+    }
+
+    public virtual async Task<TEntity> AddAsync(
         TEntity entity,
         CancellationToken cancellationToken = default
     )
     {
         ArgumentNullException.ThrowIfNull(entity);
-        return AddInternalAsync(entity, cancellationToken);
+        Entities.Add(entity);
+        await Context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return entity;
     }
 
-    private async Task<TEntity> AddInternalAsync(
-        TEntity entity,
-        CancellationToken cancellationToken
+    public virtual Task AddRangeAsync(
+        IEnumerable<TEntity> entities,
+        CancellationToken cancellationToken = default
     )
     {
-        await Entities.AddAsync(entity, cancellationToken).ConfigureAwait(false);
-        return entity;
+        ArgumentNullException.ThrowIfNull(entities);
+        return Entities.AddRangeAsync(entities, cancellationToken);
     }
 
     public virtual void Update(TEntity entity)
@@ -99,6 +110,13 @@ public abstract class GenericRepository<TEntity>
     {
         ArgumentNullException.ThrowIfNull(entities);
         Entities.RemoveRange(entities);
+    }
+
+    public virtual void RemoveByPredicate(Expression<Func<TEntity, bool>> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        var entitiesToRemove = Entities.Where(predicate).ToList();
+        Entities.RemoveRange(entitiesToRemove);
     }
 
     public virtual Task<bool> ExistsAsync(

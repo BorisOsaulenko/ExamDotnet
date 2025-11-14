@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Models;
 
@@ -12,7 +13,7 @@ public class ImageMetadata
     public int ImageId { get; set; }
     public Image? Image { get; set; }
 
-    public required string Title { get; set; }
+    public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? Location { get; set; }
     public ICollection<ImageTag> Tags { get; set; } = [];
@@ -21,17 +22,20 @@ public class ImageMetadata
     public ICollection<ImageAllowedUser> AllowedUsers { get; set; } = [];
 
     public int? ImageCollectionId { get; set; }
+
+    [JsonIgnore]
     public ImageCollection? ImageCollection { get; set; }
 
     public int ImageStatsId { get; set; }
     public ImageStats? ImageStats { get; set; }
 
-    public required string UserId { get; set; }
+    public string? UserId { get; set; }
+
+    [JsonIgnore]
     public User? User { get; set; }
 
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
 
-    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-    public DateTime EditedAt { get; set; }
+    public DateTime EditedAt { get; set; } = DateTime.UtcNow;
 }

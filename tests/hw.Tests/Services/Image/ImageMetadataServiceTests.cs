@@ -1,12 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Models;
 using NSubstitute;
 using Repositories;
 using Services.Image;
-using Xunit;
 
 namespace hw.Tests.Services.Image;
 
@@ -17,10 +13,24 @@ public sealed class ImageMetadataServiceTests
     private readonly IImageCollectionRepository _collectionRepository =
         Substitute.For<IImageCollectionRepository>();
     private readonly ImageMetadataService _service;
+    private readonly IImageStatsRepository _statsRepository =
+        Substitute.For<IImageStatsRepository>();
+    private readonly IImageRepository _imageRepository = Substitute.For<IImageRepository>();
+    private readonly IImageTagRepository _tagRepository = Substitute.For<IImageTagRepository>();
+    private readonly IImageAllowedUserRepository _allowedUserRepository =
+        Substitute.For<IImageAllowedUserRepository>();
 
     public ImageMetadataServiceTests()
     {
-        _service = new ImageMetadataService(_metadataRepository, _collectionRepository);
+        _service = new ImageMetadataService(
+            _metadataRepository,
+            _imageRepository,
+            _collectionRepository,
+            _statsRepository,
+            _tagRepository,
+            _allowedUserRepository,
+            Substitute.For<ILogger<ImageMetadataService>>()
+        );
     }
 
     [Fact]
@@ -88,7 +98,7 @@ public sealed class ImageMetadataServiceTests
     }
 
     [Fact]
-    public async Task ShouldNotRetrieveUnaccessibleMetadata()
+    public async Task ShouldNotRetrieveUnaccessibleMetadataPagination()
     {
         string userId = "testUser";
         List<ImageMetadata> metadataList = new List<ImageMetadata>
@@ -105,9 +115,7 @@ public sealed class ImageMetadataServiceTests
             CreateMetadata(meta => meta.AccessLevel = ImageAccessLevel.Public),
         };
 
-        _metadataRepository
-            .GetWithPaginationAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(metadataList);
+        _metadataRepository.Query().Returns(metadataList.AsQueryable());
 
         List<ImageMetadata> results = await _service.GetWithPaginationAsync(
             userId,
@@ -117,6 +125,110 @@ public sealed class ImageMetadataServiceTests
 
         Assert.Contains(results, meta => meta == metadataList[2]);
         Assert.Contains(results, meta => meta == metadataList[3]);
+    }
+
+    [Fact]
+    public async Task ShouldApplyPagination()
+    {
+        string userId = "testUser";
+        List<ImageMetadata> metadataList = new List<ImageMetadata>
+        {
+            CreateMetadata(meta => meta.Title = "First"),
+            CreateMetadata(meta => meta.Title = "Second"),
+            CreateMetadata(meta => meta.Title = "Third"),
+            CreateMetadata(meta => meta.Title = "Fourth"),
+        };
+
+        _metadataRepository.Query().Returns(metadataList.AsQueryable());
+
+        List<ImageMetadata> results = await _service.GetWithPaginationAsync(
+            userId,
+            new PaginationParams { Size = 2, Skip = 1 },
+            CancellationToken.None
+        );
+
+        Assert.Equal(2, results.Count);
+        Assert.Equal("Second", results[0].Title);
+        Assert.Equal("Third", results[1].Title);
+    }
+
+    [Fact]
+    public async Task ShouldAttachSASInfo()
+    {
+        string userId = "testUser";
+        ImageMetadata metadata = CreateMetadata(meta =>
+        {
+            meta.UserId = userId;
+            meta.AccessLevel = ImageAccessLevel.Public;
+        });
+
+        _metadataRepository.Query().Returns(new[] { metadata }.AsQueryable());
+
+        List<ImageMetadata> results = await _service.GetWithPaginationAsync(
+            userId,
+            new PaginationParams { Size = 10, Skip = 0 },
+            CancellationToken.None
+        );
+
+        Assert.Single(results);
+        ImageMetadata result = results[0];
+        Assert.NotNull(result.Image);
+        Assert.Equal("https://example.com/blob", result.Image!.BlobUri);
+    }
+
+    [Fact]
+    public async Task ShouldNotRetrieveUnaccessibleMetadataPredicate()
+    {
+        string userId = "testUser";
+        List<ImageMetadata> metadataList = new List<ImageMetadata>
+        {
+            CreateMetadata(meta => meta.AccessLevel = ImageAccessLevel.Private),
+            CreateMetadata(meta => meta.AccessLevel = ImageAccessLevel.AllowedUsers),
+            CreateMetadata(meta =>
+            {
+                meta.AccessLevel = ImageAccessLevel.AllowedUsers;
+                meta.AllowedUsers.Add(
+                    new ImageAllowedUser { UserId = userId, ImageMetadataId = meta.Id }
+                );
+            }),
+            CreateMetadata(meta => meta.AccessLevel = ImageAccessLevel.Public),
+        };
+
+        _metadataRepository.Query().Returns(metadataList.AsQueryable());
+
+        List<ImageMetadata> results = await _service.GetByPredicateAsync(
+            userId,
+            meta => true,
+            new PaginationParams { Size = 10, Skip = 0 },
+            CancellationToken.None
+        );
+
+        Assert.Contains(results, meta => meta == metadataList[2]);
+        Assert.Contains(results, meta => meta == metadataList[3]);
+    }
+
+    [Fact]
+    public async Task ShouldApplyPredicate()
+    {
+        string userId = "testUser";
+        List<ImageMetadata> metadataList = new List<ImageMetadata>
+        {
+            CreateMetadata(meta => meta.Title = "Match"),
+            CreateMetadata(meta => meta.Title = "NoMatch"),
+            CreateMetadata(meta => meta.Title = "Match"),
+        };
+
+        _metadataRepository.Query().Returns(metadataList.AsQueryable());
+
+        List<ImageMetadata> results = await _service.GetByPredicateAsync(
+            userId,
+            meta => meta.Title == "Match",
+            new PaginationParams { Size = 10, Skip = 0 },
+            CancellationToken.None
+        );
+
+        Assert.Equal(2, results.Count);
+        Assert.All(results, meta => Assert.Equal("Match", meta.Title));
     }
 
     [Fact]
@@ -214,9 +326,7 @@ public sealed class ImageMetadataServiceTests
             meta.UserId = "owner";
         });
 
-        _metadataRepository
-            .GetByIdAsync(Arg.Any<CancellationToken>(), 9)
-            .Returns(Task.FromResult<ImageMetadata?>(existing));
+        _metadataRepository.Query().Returns(new[] { existing }.AsQueryable());
 
         await _service.RemoveAsync(existing, CancellationToken.None);
 

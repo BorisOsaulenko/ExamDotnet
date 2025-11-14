@@ -1,0 +1,232 @@
+@using Models
+@model AddCollectionPopupPartialModel
+
+@{
+    var modalLabelId = $"{Model.ModalId}-label";
+    var formId = Model.FormId;
+    var statusId = $"{formId}-status";
+    var titleInputId = $"{formId}-title";
+    var descriptionInputId = $"{formId}-description";
+    var accessSelectId = $"{formId}-access";
+    var allowedUsersInputId = $"{formId}-allowed-users";
+    var allowedUsersContainerAttr = $"{Model.ModalId}-allowed-users";
+    var submitButtonId = $"{formId}-submit";
+    var defaultAccessLevelValue = (int)ImageCollectionAccessLevel.Public;
+    var allowedUsersAccessLevelValue = (int)ImageCollectionAccessLevel.AllowedUsers;
+    ImageCollectionAccessLevel[] accessLevels = Enum.GetValues<ImageCollectionAccessLevel>();
+}
+
+<div class="add-collection-popup">
+    <button
+        type="button"
+        class="btn btn-primary"
+        id="@Model.ActivationButtonId"
+        data-bs-toggle="modal"
+        data-bs-target="#@Model.ModalId">
+        @Model.TriggerButtonText
+    </button>
+
+    <div class="modal fade" id="@Model.ModalId" tabindex="-1" aria-labelledby="@modalLabelId" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="@modalLabelId">Create collection</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="@statusId" class="alert alert-info d-none" role="alert"></div>
+                    <form id="@formId" class="needs-validation" novalidate>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="@titleInputId" class="form-label">Title</label>
+                                <input type="text" id="@titleInputId" class="form-control" maxlength="@ImageCollection.MaxTitleLength" placeholder="Travel album" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label for="@accessSelectId" class="form-label">Access level</label>
+                                <select id="@accessSelectId" class="form-select">
+                                    @foreach (var level in accessLevels)
+                                    {
+                                        <option value="@((int)level)">@level</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label for="@descriptionInputId" class="form-label">Description</label>
+                                <textarea id="@descriptionInputId" class="form-control" rows="3" maxlength="@ImageCollection.MaxDescriptionLength" placeholder="Describe what you plan to store here."></textarea>
+                            </div>
+                            <div class="col-12" data-allowed-users-container="@allowedUsersContainerAttr" hidden>
+                                <label for="@allowedUsersInputId" class="form-label">Allowed user IDs</label>
+                                <textarea id="@allowedUsersInputId" class="form-control" rows="2" placeholder="user-1, user-2"></textarea>
+                                <div class="form-text">Comma or newline separated. Applies only to AllowedUsers collections.</div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="@submitButtonId" form="@formId">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const initCollectionPopup = () => {
+            const formId = "@formId";
+            const statusId = "@statusId";
+            const titleInputId = "@titleInputId";
+            const descriptionInputId = "@descriptionInputId";
+            const accessSelectId = "@accessSelectId";
+            const allowedUsersInputId = "@allowedUsersInputId";
+            const submitButtonId = "@submitButtonId";
+            const allowedUsersAttr = "@allowedUsersContainerAttr";
+            const modalId = "@Model.ModalId";
+            const defaultAccessLevelValue = Number("@defaultAccessLevelValue");
+            const allowedUsersAccessLevelValue = Number("@allowedUsersAccessLevelValue");
+
+            const form = document.getElementById(formId);
+            const statusEl = document.getElementById(statusId);
+            const titleInput = document.getElementById(titleInputId);
+            const descriptionInput = document.getElementById(descriptionInputId);
+            const accessSelect = document.getElementById(accessSelectId);
+            const allowedUsersInput = document.getElementById(allowedUsersInputId);
+            const submitButton = document.getElementById(submitButtonId);
+            const modalElement = document.getElementById(modalId);
+            const allowedUsersContainer = document.querySelector(`[data-allowed-users-container="${allowedUsersAttr}"]`);
+
+            if (!form || !statusEl || !titleInput || !accessSelect || !submitButton || !modalElement) {
+                return;
+            }
+
+            const setStatus = (type, message) => {
+                statusEl.textContent = message || "";
+                statusEl.classList.remove("d-none", "alert", "alert-info", "alert-success", "alert-danger", "alert-warning");
+                if (!message) {
+                    statusEl.classList.add("d-none");
+                    return;
+                }
+                statusEl.classList.add("alert", `alert-${type ?? "info"}`);
+            };
+
+            const toggleAllowedUsers = () => {
+                if (!allowedUsersContainer) {
+                    return;
+                }
+                const selectedRaw = accessSelect.value;
+                const normalized = selectedRaw === "" ? defaultAccessLevelValue : Number(selectedRaw);
+                allowedUsersContainer.hidden = normalized !== allowedUsersAccessLevelValue;
+            };
+
+            accessSelect.addEventListener("change", toggleAllowedUsers);
+            toggleAllowedUsers();
+
+            const parseList = (value) =>
+                value
+                    .split(/[\n,]/)
+                    .map((item) => item.trim())
+                    .filter((item, index, arr) => item.length > 0 && arr.indexOf(item) === index);
+
+            let isSubmitting = false;
+
+            const setSubmitting = (submitting) => {
+                isSubmitting = submitting;
+                submitButton.disabled = submitting;
+                submitButton.textContent = submitting ? "Creating..." : "Create";
+                form.querySelectorAll("input, textarea, select").forEach((el) => {
+                    el.disabled = submitting;
+                });
+            };
+
+            const resetForm = () => {
+                form.reset();
+                toggleAllowedUsers();
+            };
+
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                if (isSubmitting) {
+                    return;
+                }
+
+                if (!titleInput.value.trim()) {
+                    setStatus("danger", "Title is required.");
+                    return;
+                }
+
+                const selectedRaw = accessSelect.value;
+                let normalizedAccess = defaultAccessLevelValue;
+                if (selectedRaw !== "") {
+                    const parsed = Number(selectedRaw);
+                    if (!Number.isNaN(parsed)) {
+                        normalizedAccess = parsed;
+                    }
+                }
+
+                const payload = {
+                    Title: titleInput.value.trim(),
+                    Description: descriptionInput.value?.trim() || null,
+                    AccessLevel: normalizedAccess,
+                    CoverImageMetadataId: null,
+                    AllowedUsers: [],
+                };
+
+                if (
+                    normalizedAccess === allowedUsersAccessLevelValue
+                    && allowedUsersInput
+                    && allowedUsersInput.value
+                ) {
+                    payload.AllowedUsers = parseList(allowedUsersInput.value);
+                }
+
+                setSubmitting(true);
+                setStatus("info", "Creating collection...");
+
+                try {
+                    const response = await fetch("/api/image-collection", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(payload),
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(errorText || "Failed to create collection.");
+                    }
+
+                    setStatus("success", "Collection created.");
+                    resetForm();
+
+                    const hideModal = () => {
+                        const modalApi = window.bootstrap?.Modal?.getOrCreateInstance(modalElement);
+                        if (modalApi) {
+                            modalApi.hide();
+                        } else {
+                            modalElement.classList.remove("show");
+                        }
+                        setStatus(null, "");
+                    };
+
+                    window.setTimeout(() => {
+                        hideModal();
+                        window.location.reload();
+                    }, 800);
+                } catch (error) {
+                    const message =
+                        error instanceof Error ? error.message : "Failed to create collection.";
+                    setStatus("danger", message);
+                    setSubmitting(false);
+                }
+            });
+        };
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initCollectionPopup);
+        } else {
+            initCollectionPopup();
+        }
+    })();
+</script>

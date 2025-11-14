@@ -1,0 +1,153 @@
+@page
+@model hw.Pages.Images.Mine.IndexModel
+@{
+ViewData["Title"] = "My Images";
+}
+
+<style>
+    .masonry {
+        column-count: 1;
+        column-gap: 0.8rem;
+    }
+
+    @@media (min-width: 576px) {
+        .masonry {
+            column-count: 3;
+        }
+    }
+
+    @@media (min-width: 992px) {
+        .masonry {
+            column-count: 4;
+        }
+    }
+
+    .masonry-item {
+        break-inside: avoid;
+        margin-bottom: 0.8rem;
+        display: block;
+    }
+
+    #image-browser {
+        height: 100%;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    #image-browser::-webkit-scrollbar {
+        display: none;
+    }
+</style>
+
+<section id="image-browser">
+    <div class="d-flex justify-content-between flex-wrap align-items-end gap-3 mb-3">
+        <h1 class="display-6 mb-0">My Images</h1>
+        <div class="d-flex justify-content-end align-items-start flex-wrap gap-2">
+            @await Html.PartialAsync("FilterPartial", new FilterPartialModel(Model.Filter, Url.Page("/Images/Mine/Index")))
+            @await Html.PartialAsync("AddImagePopupPartial", new AddImagePopupPartialModel("add-image-trigger"))
+        </div>
+    </div>
+
+    @if (!Model.Images.Any())
+    {
+    <div class="text-center py-5 text-muted">
+        <p>No images found. Try uploading or adjusting your filters.</p>
+    </div>
+    }
+    else
+    {
+    <div class="masonry">
+        @foreach (var metadata in Model.Images)
+        {
+        var imageUrl = metadata.Image?.BlobUri ?? string.Empty;
+        var detailsUrl = Url.Page("/Images/Mine/Index", new { SelectedImageId = metadata.Id }) ?? "#";
+        <a href="@detailsUrl" class="text-decoration-none text-reset masonry-item" data-image-select="@metadata.Id">
+            <div class="card shadow-sm" data-image-card="@metadata.Id">
+                @if (!string.IsNullOrEmpty(imageUrl))
+                {
+                <img src="@imageUrl" class="card-img-top" alt="@metadata.Title" loading="lazy">
+                }
+                <div class="card-body pt-3 pb-3">
+                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                        <h2 class="card-title h6 mb-0 flex-grow-1 text-truncate">@metadata.Title</h2>
+                        <button type="button" class="btn btn-sm btn-outline-danger" title="Delete image" aria-label="Delete image" data-delete-image="@metadata.Id">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                                <path d="M5.5 5.5a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0v-6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0v-6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" />
+                                <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM13.5 3V2h-11v1z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="card-text text-muted mb-0">
+                        @metadata.UploadedAt.ToLocalTime().ToString("MMM d")
+                    </p>
+                </div>
+            </div>
+        </a>
+        }
+    </div>
+    }
+</section>
+
+@section Scripts {
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener("click", (event) => {
+            if (event.target.closest("[data-delete-image]")) {
+                return;
+            }
+
+            const link = event.target.closest("[data-image-select]");
+            if (!link) {
+                return;
+            }
+
+            event.preventDefault();
+            const selectedId = link.getAttribute("data-image-select");
+            const url = new URL(window.location.href);
+            url.searchParams.set("SelectedImageId", selectedId);
+            window.location.href = url.toString();
+        });
+
+        document.addEventListener("click", async (event) => {
+            const deleteButton = event.target.closest("[data-delete-image]");
+            if (!deleteButton) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            const imageId = deleteButton.getAttribute("data-delete-image");
+            if (!imageId) {
+                return;
+            }
+
+            if (!window.confirm("Delete this image? This action cannot be undone.")) {
+                return;
+            }
+
+            deleteButton.disabled = true;
+            deleteButton.classList.add("disabled");
+
+            try {
+                const response = await fetch(`/api/image/${imageId}`, { method: "DELETE" });
+                if (!response.ok) {
+                    throw new Error("Unable to delete the image.");
+                }
+
+                window.location.reload();
+            } catch (error) {
+                const message =
+                    error instanceof Error ? error.message : "Failed to delete the image.";
+                window.alert(message);
+            } finally {
+                deleteButton.disabled = false;
+                deleteButton.classList.remove("disabled");
+            }
+        });
+    });
+</script>
+}

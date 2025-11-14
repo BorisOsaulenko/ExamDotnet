@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Models;
 
@@ -10,6 +10,7 @@ public enum ImageContentType
     Bmp,
     Tiff,
     WebP,
+    Avif,
 }
 
 public enum ImageAccessLevel
@@ -29,5 +30,6 @@ public class Image
     public ImageContentType ContentType { get; set; }
     public long Size { get; set; } // Size in bytes
 
+    [JsonIgnore]
     public ImageMetadata? Metadata { get; set; }
 }

@@ -1,0 +1,102 @@
+﻿@page
+@model IndexModel
+@{
+ViewData["Title"] = "Home";
+}
+
+<style>
+    .masonry {
+        column-count: 1;
+        column-gap: 0.8rem;
+    }
+
+    @@media (min-width: 576px) {
+        .masonry {
+            column-count: 3;
+        }
+    }
+
+    @@media (min-width: 992px) {
+        .masonry {
+            column-count: 4;
+        }
+    }
+
+    .masonry-item {
+        break-inside: avoid;
+        margin-bottom: 0.8rem;
+        display: block;
+    }
+
+    #image-browser {
+        height: 100%;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    #image-browser::-webkit-scrollbar {
+        display: none;
+    }
+</style>
+
+<section id="image-browser">
+    <div class="d-flex justify-content-between flex-wrap align-items-end gap-3 mb-3">
+        <h1 class="display-6 mb-0">Browse Images</h1>
+        <div class="d-flex justify-content-end">
+            @await Html.PartialAsync("FilterPartial", new FilterPartialModel(Model.Filter, Url.Page("/Index")))
+        </div>
+    </div>
+
+    @if (!Model.Images.Any())
+    {
+    <div class="text-center py-5 text-muted">
+        <p>No images found. Try uploading or adjusting your filters.</p>
+    </div>
+    }
+    else
+    {
+    <div class="masonry">
+        @foreach (var metadata in Model.Images)
+        {
+        var imageUrl = metadata.Image?.BlobUri ?? string.Empty;
+        <a href="@Url.Page(" /Index", new { SelectedImageId=metadata.Id })" class="text-decoration-none text-reset masonry-item" data-image-select="@metadata.Id">
+            <div class="card shadow-sm">
+                @if (!string.IsNullOrEmpty(imageUrl))
+                {
+                <img src="@imageUrl" class="card-img-top" alt="@metadata.Title" loading="lazy">
+                }
+                <div class="card-body">
+                    <h2 class="card-title h6 mb-1">@metadata.Title</h2>
+                    <p class="card-text text-muted mb-0">
+                        @(metadata.User?.UserName ?? "Unknown author")
+                        • @metadata.UploadedAt.ToLocalTime().ToString("MMM d")
+                    </p>
+                </div>
+            </div>
+        </a>
+        }
+    </div>
+    }
+</section>
+
+@section Scripts {
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener("click", (event) => {
+            const link = event.target.closest("[data-image-select]");
+            if (!link) {
+                return;
+            }
+
+            event.preventDefault();
+            const selectedId = link.getAttribute("data-image-select");
+            const url = new URL(window.location.href);
+            url.searchParams.set("SelectedImageId", selectedId);
+            window.location.href = url.toString();
+        });
+    });
+</script>
+}

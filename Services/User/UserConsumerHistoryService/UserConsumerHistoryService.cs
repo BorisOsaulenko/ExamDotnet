@@ -1,5 +1,5 @@
 using FluentValidation;
-using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using Models;
 using Repositories;
 
@@ -7,12 +7,12 @@ namespace Services.User;
 
 public partial class UserConsumerHistoryService : IUserConsumerHistoryService
 {
-    public UserConsumerHistoryService(UserConsumerHistoryRepository repository)
+    public UserConsumerHistoryService(IUserConsumerHistoryRepository repository)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
     }
 
-    private readonly UserConsumerHistoryRepository _repository;
+    private readonly IUserConsumerHistoryRepository _repository;
 
     public async Task<UserConsumerHistory> AddAsync(
         UserConsumerHistory entity,
@@ -22,7 +22,7 @@ public partial class UserConsumerHistoryService : IUserConsumerHistoryService
         entity.Id = 0;
         CreateUserHistoryValidator().ValidateAndThrow(entity);
 
-        return await _repository.AddAsync(entity, cancellationToken).ConfigureAwait(false);
+        return await Task.FromResult(await _repository.AddAsync(entity, cancellationToken));
     }
 
     public async Task<Dictionary<ConsumerActivityType, List<UserConsumerHistory>>> GetUserHistory(
@@ -30,12 +30,9 @@ public partial class UserConsumerHistoryService : IUserConsumerHistoryService
         CancellationToken cancellationToken = default
     )
     {
-        List<UserConsumerHistory> userHistories = await _repository
-            .Query()
-            .AsNoTracking()
-            .Where(history => history.UserId == userId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
+        var userHistories = await Task.FromResult(
+            _repository.Query().Where(history => history.UserId == userId).ToList()
+        );
 
         var hierarchical = userHistories
             .GroupBy(history => history.ActivityType)
@@ -46,11 +43,9 @@ public partial class UserConsumerHistoryService : IUserConsumerHistoryService
 
     public async Task RemoveAllAsync(string userId, CancellationToken cancellationToken = default)
     {
-        var userHistories = await _repository
-            .Query()
-            .Where(history => history.UserId == userId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
+        var userHistories = await Task.FromResult(
+            _repository.Query().Where(history => history.UserId == userId).ToList()
+        );
 
         _repository.RemoveRange(userHistories);
         await _repository.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

@@ -1,5 +1,7 @@
-﻿<!DOCTYPE html>
+﻿@using Models
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,13 +11,13 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/hw.styles.css" asp-append-version="true" />
 </head>
-<body>
+
+<body class="d-flex flex-column vh-100 overflow-hidden mb-0">
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow">
+            <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-page="/Index">hw</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
@@ -27,21 +29,29 @@
                             <a class="nav-link text-dark" asp-area="" asp-page="/Privacy">Privacy</a>
                         </li>
                     </ul>
+                    <partial name="_LoginPartial.cshtml" />
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - hw - <a asp-area="" asp-page="/Privacy">Privacy</a>
+    @{
+    var sidebarActiveKey = ViewData["SidebarActiveKey"]?.ToString();
+    var selectedImageMetadata = ViewData["SelectedImageMetadata"] as ImageMetadata;
+    }
+    <div class="container-fluid flex-grow-1 d-flex flex-column overflow-hidden">
+        <div class="row flex-nowrap h-100">
+            <div class="col-2 d-flex flex-column p-0 h-100">
+                <div class="d-flex flex-column h-100">
+                    @await Html.PartialAsync("_Sidebar", new SidebarModel(sidebarActiveKey, selectedImageMetadata))
+                </div>
+            </div>
+            <div class="col d-flex flex-column h-100 overflow-hidden">
+                <main role="main" class="flex-grow-1 overflow-hidden">
+                    @RenderBody()
+                </main>
+            </div>
         </div>
-    </footer>
+    </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
@@ -49,4 +59,5 @@
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>
+
 </html>

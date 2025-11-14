@@ -1,0 +1,22 @@
+ImageController (api/image)
+
+POST / (form-data: imageFile, metadataInputJson, CancellationToken): uploads image binary, validates type/user, builds metadata (collection, access level, tags, allowed users) and returns created metadata with SAS-enabled image reference.
+PUT /{id} (body: ImageMetadataModel, CancellationToken): updates metadata for the caller-owned image (title/desc/location/access/collection/tags/allowed users) after enforcing ownership; 204 on success.
+GET /{id} (route: id, CancellationToken): retrieves metadata (including image, stats, collection links) if caller has access; increments view count and returns SAS-enabled image.
+GET / (query: FilterParams?, PaginationParams?, CancellationToken): lists images accessible to caller filtered/paginated; each entry’s image gains SAS info.
+DELETE /{id} (route: id, CancellationToken): removes caller-owned metadata (and underlying image/tags/allowed users); 204 on success.
+POST /{id}/tags (body: { tag }, CancellationToken): trims/validates tag string and adds it via ImageTagService; returns created tag record.
+DELETE /{id}/tags (query: tag, CancellationToken): removes a specific tag owned by caller; 204 on success.
+PUT /{id}/tags (body: { tags[] }, CancellationToken): replaces entire tag list with distinct trimmed values (case-insensitive) through ImageTagService; returns new tag collection.
+POST /{id}/allowed-users (body: { userId }, CancellationToken): adds a single allowed user (trimmed) when caller owns the image; returns created relation.
+DELETE /{id}/allowed-users/{allowedUserId} (route: allowedUserId, CancellationToken): removes a specific allowed-user entry after ownership check; 204 on success.
+PUT /{id}/allowed-users (body: { userIds[] }, CancellationToken): replaces entire allowed-user list with distinct trimmed IDs via ImageAllowedUserService; returns new allowed-user collection.
+ImageCollectionController (api/image-collection)
+
+POST / (body: ImageCollectionInput, CancellationToken): creates caller-owned collection (title/desc/access/cover + optional allowed users) after validation; returns resource with Location header via CreatedAtAction.
+PUT /{id} (body: ImageCollectionInput, CancellationToken): updates collection metadata/cover; if access level is AllowedUsers and list provided, replaces allowed users accordingly; 204 on success.
+GET /{id} (route: id, CancellationToken): fetches single collection (and eager-loaded related entities) if caller has access; 404 when missing.
+GET / (CancellationToken): lists collections accessible to caller using same access rules; logs user context.
+DELETE /{id} (CancellationToken): deletes caller-owned collection; 204 on success.
+GET /{id}/allowed-users (CancellationToken): returns full allowed-user list for caller-owned collection.
+PUT /{id}/allowed-users (body: { userIds[] }, CancellationToken): replaces allowed-user list (requires non-empty payload) via collection allowed-user service; 204 on success.

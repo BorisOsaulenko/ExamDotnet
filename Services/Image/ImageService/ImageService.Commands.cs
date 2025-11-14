@@ -1,8 +1,5 @@
 using Azure.Storage.Blobs.Models;
-using FluentValidation;
-using Microsoft.EntityFrameworkCore;
 using Models;
-using ImageCollectionModel = Models.ImageCollection;
 using ImageModel = Models.Image;
 
 namespace Services.Image;
@@ -11,9 +8,12 @@ public partial class ImageService
 {
     public async Task RemoveAsync(int imageId, CancellationToken cancellationToken = default)
     {
-        ImageModel? existingImage =
-            await _repository.GetByIdAsync(cancellationToken, imageId).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("Image does not exist.");
+        ImageModel? existingImage = await _repository
+            .GetByIdAsync(cancellationToken, imageId)
+            .ConfigureAwait(false);
+
+        if (existingImage == null || existingImage.BlobName == null)
+            throw new InvalidOperationException($"Image with ID {imageId} not found.");
 
         await _containerClient.DeleteIfExistsAsync(existingImage.BlobName, cancellationToken);
 
@@ -27,12 +27,23 @@ public partial class ImageService
         CancellationToken cancellationToken = default
     )
     {
+        Stream moderatedStream = await PrepareSeekableStreamAsync(imageStream, cancellationToken)
+            .ConfigureAwait(false);
+
+        await _computerVision
+            .EnsureSafeContentAsync(moderatedStream, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (moderatedStream.CanSeek)
+            moderatedStream.Position = 0;
+
+
         string blobName = GenerateBlobName();
         try
         {
             await _containerClient.UploadAsync(
                 blobName,
-                imageStream,
+                moderatedStream,
                 new BlobHttpHeaders { ContentType = GetMimeType(contentType) },
                 cancellationToken
             );
@@ -51,6 +62,6 @@ public partial class ImageService
             ContentType = contentType,
         };
 
-        return await _repository.AddAsync(image, cancellationToken);
+        return await Task.FromResult(await _repository.AddAsync(image, cancellationToken));
     }
 }

@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using FluentValidation;
-using Microsoft.EntityFrameworkCore;
 using Models;
 using Repositories;
 using Services.Util;
@@ -28,20 +27,22 @@ public partial class ImageCommentService : IImageCommentService
     )
     {
         CreateImageCommentValidator().ValidateAndThrow(entity);
-        ImageMetadataModel? image = await _imageMetadataRepository
-            .GetByIdAsync(cancellationToken, entity.ImageStatsId)
-            .ConfigureAwait(false);
+        IQueryable<ImageMetadataModel> metadataQ = _imageMetadataRepository
+            .Query()
+            .Where(im => im.ImageStatsId == entity.ImageStatsId);
 
-        if (image == null || !ServiceUtils.Image.UserHasAccess(image, entity.UserId))
+        ImageMetadataModel? metadata = await Task.FromResult(metadataQ.FirstOrDefault());
+
+        if (metadata == null || !ServiceUtils.Image.UserHasAccess(metadata, entity.UserId))
         {
-            throw new UnauthorizedAccessException(
+            throw new InvalidOperationException(
                 "You do not have permission to comment on this image."
             );
         }
-        return await _repository.AddAsync(entity, cancellationToken).ConfigureAwait(false);
+        return await Task.FromResult(await _repository.AddAsync(entity, cancellationToken));
     }
 
-    public Task<List<ImageComment>> GetByPredicateAsync(
+    public async Task<List<ImageComment>> GetByPredicateAsync(
         string currentUserId,
         Expression<Func<ImageComment, bool>> predicate,
         PaginationParams pagination,
@@ -62,7 +63,7 @@ public partial class ImageCommentService : IImageCommentService
             .Select(joined => joined.comment)
             .Skip(pagination.Skip)
             .Take(pagination.Size);
-        return q.ToListAsync(cancellationToken);
+        return await Task.FromResult(q.ToList());
     }
 
     public async Task RemoveAsync(

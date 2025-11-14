@@ -1,0 +1,187 @@
+@page "/collections/mine"
+@using System.Linq
+@using Models
+@model hw.Pages.ImageCollection.Mine.IndexModel
+@{
+    ViewData["Title"] = "My Collections";
+}
+
+<style>
+    .masonry {
+        column-count: 1;
+        column-gap: 0.8rem;
+    }
+
+    @@media (min-width: 576px) {
+        .masonry {
+            column-count: 2;
+        }
+    }
+
+    @@media (min-width: 992px) {
+        .masonry {
+            column-count: 3;
+        }
+    }
+
+    .masonry-item {
+        break-inside: avoid;
+        margin-bottom: 0.8rem;
+        display: block;
+    }
+
+    #collection-browser {
+        height: 100%;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    #collection-browser::-webkit-scrollbar {
+        display: none;
+    }
+
+    .collection-cover {
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+    }
+
+    .collection-placeholder {
+        width: 100%;
+        height: 220px;
+        background: repeating-linear-gradient(
+            45deg,
+            rgba(0, 0, 0, 0.05),
+            rgba(0, 0, 0, 0.05) 10px,
+            rgba(0, 0, 0, 0.1) 10px,
+            rgba(0, 0, 0, 0.1) 20px
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--bs-secondary);
+        font-size: 0.9rem;
+    }
+</style>
+
+<section id="collection-browser">
+    <div class="d-flex justify-content-between flex-wrap align-items-end gap-3 mb-3">
+        <h1 class="display-6 mb-0">My Collections</h1>
+        <div class="d-flex justify-content-end">
+            @await Html.PartialAsync("AddCollectionPopupPartial", new AddCollectionPopupPartialModel("add-collection-trigger"))
+        </div>
+    </div>
+
+    @if (!Model.Collections.Any())
+    {
+        <div class="text-center py-5 text-muted">
+            <p>No collections yet. Start by creating a new collection or grouping your images.</p>
+        </div>
+    }
+    else
+    {
+        <div class="masonry">
+            @foreach (var collection in Model.Collections)
+            {
+                string coverImageUrl =
+                    collection.CoverImageMetadata?.Image?.BlobUri
+                    ?? collection.Images?.FirstOrDefault(img => img.Image?.BlobUri != null)?.Image?.BlobUri
+                    ?? string.Empty;
+                int imageCount = collection.Images?.Count ?? 0;
+
+                <div class="masonry-item">
+                    <div class="card shadow-sm h-100" data-collection-card="@collection.Id">
+                        @if (!string.IsNullOrEmpty(coverImageUrl))
+                        {
+                            <img src="@coverImageUrl" class="collection-cover" alt="@collection.Title cover" loading="lazy" />
+                        }
+                        else
+                        {
+                            <div class="collection-placeholder">No cover image</div>
+                        }
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                <h2 class="card-title h6 mb-0 flex-grow-1 text-truncate">@collection.Title</h2>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-light text-dark text-uppercase">@collection.AccessLevel</span>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        title="Delete collection"
+                                        aria-label="Delete collection"
+                                        data-delete-collection="@collection.Id">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                                            <path d="M5.5 5.5a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0v-6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0v-6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" />
+                                            <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM13.5 3V2h-11v1z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(collection.Description))
+                            {
+                                <p class="card-text text-muted mb-2">@collection.Description</p>
+                            }
+                            else
+                            {
+                                <p class="card-text text-muted mb-2 fst-italic">No description provided.</p>
+                            }
+                            <div class="mt-auto">
+                                <p class="mb-0 text-muted small">
+                                    @imageCount @(imageCount == 1 ? "image" : "images")
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@section Scripts {
+<script>
+    document.addEventListener("click", async (event) => {
+        const deleteButton = event.target.closest("[data-delete-collection]");
+        if (!deleteButton) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const collectionId = deleteButton.getAttribute("data-delete-collection");
+        if (!collectionId) {
+            return;
+        }
+
+        if (!window.confirm("Delete this collection? This action cannot be undone.")) {
+            return;
+        }
+
+        deleteButton.disabled = true;
+        deleteButton.classList.add("disabled");
+
+        try {
+            const response = await fetch(`/api/image-collection/${collectionId}`, {
+                method: "DELETE",
+            });
+
+            if (!response.ok) {
+                throw new Error("Unable to delete the collection.");
+            }
+
+            window.location.reload();
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : "Failed to delete the collection.";
+            window.alert(message);
+        } finally {
+            deleteButton.disabled = false;
+            deleteButton.classList.remove("disabled");
+        }
+    });
+</script>
+}

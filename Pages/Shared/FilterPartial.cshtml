@@ -1,0 +1,90 @@
+@using Controllers.Image
+@model FilterPartialModel
+
+@{
+    var filter = Model.Filter ?? new FilterParams();
+    string fromDateValue = filter.FromDate?.ToString("yyyy-MM-dd") ?? string.Empty;
+    string toDateValue = filter.ToDate?.ToString("yyyy-MM-dd") ?? string.Empty;
+    var sortByOptions = Enum.GetValues(typeof(SortBy)).Cast<SortBy>();
+    var sortOrderOptions = Enum.GetValues(typeof(SortOrder)).Cast<SortOrder>();
+}
+
+<div class="dropdown">
+    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        @Model.ButtonLabel
+    </button>
+    <div class="dropdown-menu dropdown-menu-end p-4 shadow" style="min-width: 320px;">
+        <form method="@Model.FormMethod" action="@Model.FormAction" class="filter-form">
+            <input type="hidden" name="Pagination.Skip" value="0" />
+
+            <div class="mb-3">
+                <label for="filter-search-term" class="form-label">Search</label>
+                <input
+                    type="search"
+                    name="Filter.SearchTerm"
+                    id="filter-search-term"
+                    value="@filter.SearchTerm"
+                    class="form-control"
+                    placeholder="Search titles, authors..."
+                />
+            </div>
+
+            <div class="row g-2">
+                <div class="col-12">
+                    <label class="form-label">Upload date</label>
+                </div>
+                <div class="col">
+                    <input
+                        type="date"
+                        class="form-control"
+                        name="Filter.FromDate"
+                        value="@fromDateValue"
+                        aria-label="From date"
+                    />
+                </div>
+                <div class="col">
+                    <input
+                        type="date"
+                        class="form-control"
+                        name="Filter.ToDate"
+                        value="@toDateValue"
+                        aria-label="To date"
+                    />
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <label for="filter-sort-by" class="form-label">Sort by</label>
+                <select id="filter-sort-by" name="Filter.SortBy" class="form-select">
+                    <option value="">Relevance</option>
+                    @foreach (var option in sortByOptions)
+                    {
+                        <option value="@option" selected="@(filter.SortBy == option ? "selected" : null)">
+                            @option
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="mt-3">
+                <label for="filter-sort-order" class="form-label">Sort order</label>
+                <select id="filter-sort-order" name="Filter.SortOrder" class="form-select">
+                    <option value="">Default</option>
+                    @foreach (var option in sortOrderOptions)
+                    {
+                        <option value="@option" selected="@(filter.SortOrder == option ? "selected" : null)">
+                            @option
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="mt-4 d-grid gap-2">
+                <button class="btn btn-primary" type="submit">
+                    @Model.ApplyButtonText
+                </button>
+                <a class="btn btn-light" href="@Model.FormAction">@Model.ResetLinkText</a>
+            </div>
+        </form>
+    </div>
+</div>

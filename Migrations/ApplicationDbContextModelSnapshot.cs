@@ -22,153 +22,6 @@ namespace hw.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Image", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AccessLevel")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("BlobUri")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ContainerName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("ContentType")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("EditedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("ImageCollectionId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Location")
-                        .HasColumnType("text");
-
-                    b.Property<long>("Size")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UploadedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ImageCollectionId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Images");
-                });
-
-            modelBuilder.Entity("ImageAllowedUser", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ImageId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("ImageId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("ImageAllowedUsers");
-                });
-
-            modelBuilder.Entity("ImageCollection", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AccessLevel")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("CoverImageId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CoverImageId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ImageCollections");
-                });
-
-            modelBuilder.Entity("ImageCollectionAllowedUser", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ImageCollectionId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("ImageCollectionId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("ImageCollectionAllowedUsers");
-                });
-
             modelBuilder.Entity("ImageCollectionUserPreferences", b =>
                 {
                     b.Property<int>("SubscribedCollectionsId")
@@ -184,95 +37,19 @@ namespace hw.Migrations
                     b.ToTable("ImageCollectionUserPreferences");
                 });
 
-            modelBuilder.Entity("ImageComment", b =>
+            modelBuilder.Entity("ImageStatsUserPreferences", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<int>("LikedByUsersId")
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("ImageId")
+                    b.Property<int>("LikedImagesId")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.HasKey("LikedByUsersId", "LikedImagesId");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.HasIndex("LikedImagesId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("ImageId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ImageComments");
-                });
-
-            modelBuilder.Entity("ImageStats", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Comments")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Downloads")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ImageId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Likes")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Shares")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Views")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ImageId")
-                        .IsUnique();
-
-                    b.ToTable("ImageStats");
-                });
-
-            modelBuilder.Entity("ImageTag", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ImageId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Tag")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ImageId", "Tag")
-                        .IsUnique();
-
-                    b.ToTable("ImageTags");
+                    b.ToTable("ImageStatsUserPreferences");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -354,10 +131,12 @@ namespace hw.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("ProviderKey")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("ProviderDisplayName")
                         .HasColumnType("text");
@@ -394,10 +173,12 @@ namespace hw.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Name")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Value")
                         .HasColumnType("text");
@@ -407,7 +188,267 @@ namespace hw.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("User", b =>
+            modelBuilder.Entity("Models.Image", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BlobName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BlobUri")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ContentType")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Images");
+                });
+
+            modelBuilder.Entity("Models.ImageAllowedUser", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ImageMetadataId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ImageMetadataId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ImageAllowedUsers");
+                });
+
+            modelBuilder.Entity("Models.ImageCollection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccessLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CoverImageMetadataId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CoverImageMetadataId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ImageCollections");
+                });
+
+            modelBuilder.Entity("Models.ImageCollectionAllowedUser", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ImageCollectionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ImageCollectionId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ImageCollectionAllowedUsers");
+                });
+
+            modelBuilder.Entity("Models.ImageComment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ImageStatsId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImageStatsId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ImageComments");
+                });
+
+            modelBuilder.Entity("Models.ImageMetadata", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccessLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("EditedAt")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<int?>("ImageCollectionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ImageId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ImageStatsId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserId1")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImageCollectionId");
+
+                    b.HasIndex("ImageId")
+                        .IsUnique();
+
+                    b.HasIndex("ImageStatsId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId1");
+
+                    b.ToTable("ImageMetadata");
+                });
+
+            modelBuilder.Entity("Models.ImageStats", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Downloads")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Shares")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Views")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ImageStats");
+                });
+
+            modelBuilder.Entity("Models.ImageTag", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ImageMetadataId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Tag")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImageMetadataId", "Tag")
+                        .IsUnique();
+
+                    b.ToTable("ImageTags");
+                });
+
+            modelBuilder.Entity("Models.User", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text");
@@ -471,7 +512,7 @@ namespace hw.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("UserConsumerHistory", b =>
+            modelBuilder.Entity("Models.UserConsumerHistory", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -491,9 +532,6 @@ namespace hw.Migrations
                     b.Property<int?>("ImageId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("SearchQuery")
-                        .HasColumnType("text");
-
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -509,7 +547,7 @@ namespace hw.Migrations
                     b.ToTable("UserConsumerHistories");
                 });
 
-            modelBuilder.Entity("UserFavoriteTag", b =>
+            modelBuilder.Entity("Models.UserFavoriteTag", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -537,17 +575,13 @@ namespace hw.Migrations
                     b.ToTable("UserFavoriteTags");
                 });
 
-            modelBuilder.Entity("UserPreferences", b =>
+            modelBuilder.Entity("Models.UserPreferences", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("FavoriteAuthors")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<bool>("ReceiveNotifications")
                         .HasColumnType("boolean");
@@ -567,7 +601,7 @@ namespace hw.Migrations
                     b.ToTable("UserPreferences");
                 });
 
-            modelBuilder.Entity("UserProducerHistory", b =>
+            modelBuilder.Entity("Models.UserProducerHistory", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -581,16 +615,31 @@ namespace hw.Migrations
                     b.Property<int>("ActivityType")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("CollectionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ImageId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PreviousCollectionAccessLevel")
+                        .HasColumnType("integer");
+
                     b.Property<string>("PreviousCollectionDescription")
                         .HasColumnType("text");
 
                     b.Property<string>("PreviousCollectionTitle")
                         .HasColumnType("text");
 
+                    b.Property<int?>("PreviousCoverImageId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("PreviousImageAccessLevel")
                         .HasColumnType("integer");
 
                     b.Property<string>("PreviousImageDescription")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PreviousImageLocation")
                         .HasColumnType("text");
 
                     b.Property<string>("PreviousImageTags")
@@ -610,134 +659,49 @@ namespace hw.Migrations
                     b.ToTable("UserProducerHistories");
                 });
 
-            modelBuilder.Entity("Image", b =>
+            modelBuilder.Entity("UserUserPreferences", b =>
                 {
-                    b.HasOne("ImageCollection", "ImageCollection")
-                        .WithMany("Images")
-                        .HasForeignKey("ImageCollectionId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                    b.Property<int>("FavoriteAuthorOfId")
+                        .HasColumnType("integer");
 
-                    b.HasOne("User", "User")
-                        .WithMany("Images")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Property<string>("FavoriteAuthorsId")
+                        .HasColumnType("text");
 
-                    b.Navigation("ImageCollection");
+                    b.HasKey("FavoriteAuthorOfId", "FavoriteAuthorsId");
 
-                    b.Navigation("User");
-                });
+                    b.HasIndex("FavoriteAuthorsId");
 
-            modelBuilder.Entity("ImageAllowedUser", b =>
-                {
-                    b.HasOne("Image", "Image")
-                        .WithMany("AllowedUsers")
-                        .HasForeignKey("ImageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("User", "User")
-                        .WithMany("AllowedImages")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Image");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("ImageCollection", b =>
-                {
-                    b.HasOne("Image", "CoverImage")
-                        .WithMany()
-                        .HasForeignKey("CoverImageId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("User", "User")
-                        .WithMany("ImageCollections")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CoverImage");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("ImageCollectionAllowedUser", b =>
-                {
-                    b.HasOne("ImageCollection", "ImageCollection")
-                        .WithMany("AllowedUsers")
-                        .HasForeignKey("ImageCollectionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("User", "User")
-                        .WithMany("AllowedImageCollections")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ImageCollection");
-
-                    b.Navigation("User");
+                    b.ToTable("UserUserPreferences");
                 });
 
             modelBuilder.Entity("ImageCollectionUserPreferences", b =>
                 {
-                    b.HasOne("ImageCollection", null)
+                    b.HasOne("Models.ImageCollection", null)
                         .WithMany()
                         .HasForeignKey("SubscribedCollectionsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("UserPreferences", null)
+                    b.HasOne("Models.UserPreferences", null)
                         .WithMany()
                         .HasForeignKey("SubscribersId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ImageComment", b =>
+            modelBuilder.Entity("ImageStatsUserPreferences", b =>
                 {
-                    b.HasOne("Image", "Image")
-                        .WithMany("Comments")
-                        .HasForeignKey("ImageId")
+                    b.HasOne("Models.UserPreferences", null)
+                        .WithMany()
+                        .HasForeignKey("LikedByUsersId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("User", "User")
-                        .WithMany("Comments")
-                        .HasForeignKey("UserId")
+                    b.HasOne("Models.ImageStats", null)
+                        .WithMany()
+                        .HasForeignKey("LikedImagesId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Image");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("ImageStats", b =>
-                {
-                    b.HasOne("Image", "Image")
-                        .WithOne("Stats")
-                        .HasForeignKey("ImageStats", "ImageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Image");
-                });
-
-            modelBuilder.Entity("ImageTag", b =>
-                {
-                    b.HasOne("Image", "Image")
-                        .WithMany("Tags")
-                        .HasForeignKey("ImageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Image");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -751,7 +715,7 @@ namespace hw.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("User", null)
+                    b.HasOne("Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -760,7 +724,7 @@ namespace hw.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("User", null)
+                    b.HasOne("Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -775,7 +739,7 @@ namespace hw.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("User", null)
+                    b.HasOne("Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -784,26 +748,149 @@ namespace hw.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("User", null)
+                    b.HasOne("Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("UserConsumerHistory", b =>
+            modelBuilder.Entity("Models.ImageAllowedUser", b =>
                 {
-                    b.HasOne("ImageCollection", "Collection")
+                    b.HasOne("Models.ImageMetadata", "Image")
+                        .WithMany("AllowedUsers")
+                        .HasForeignKey("ImageMetadataId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Models.User", "User")
+                        .WithMany("AllowedImages")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Image");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Models.ImageCollection", b =>
+                {
+                    b.HasOne("Models.ImageMetadata", "CoverImageMetadata")
+                        .WithMany()
+                        .HasForeignKey("CoverImageMetadataId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Models.User", "User")
+                        .WithMany("ImageCollections")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CoverImageMetadata");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Models.ImageCollectionAllowedUser", b =>
+                {
+                    b.HasOne("Models.ImageCollection", "ImageCollection")
+                        .WithMany("AllowedUsers")
+                        .HasForeignKey("ImageCollectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Models.User", "User")
+                        .WithMany("AllowedImageCollections")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ImageCollection");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Models.ImageComment", b =>
+                {
+                    b.HasOne("Models.ImageStats", "ImageStats")
+                        .WithMany("ImageComments")
+                        .HasForeignKey("ImageStatsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Models.User", "User")
+                        .WithMany("Comments")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ImageStats");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Models.ImageMetadata", b =>
+                {
+                    b.HasOne("Models.ImageCollection", "ImageCollection")
+                        .WithMany("Images")
+                        .HasForeignKey("ImageCollectionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Models.Image", "Image")
+                        .WithOne("Metadata")
+                        .HasForeignKey("Models.ImageMetadata", "ImageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Models.ImageStats", "ImageStats")
+                        .WithOne("ImageMetadata")
+                        .HasForeignKey("Models.ImageMetadata", "ImageStatsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Models.User", null)
+                        .WithMany("Images")
+                        .HasForeignKey("UserId1");
+
+                    b.Navigation("Image");
+
+                    b.Navigation("ImageCollection");
+
+                    b.Navigation("ImageStats");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Models.ImageTag", b =>
+                {
+                    b.HasOne("Models.ImageMetadata", "ImageMetadata")
+                        .WithMany("Tags")
+                        .HasForeignKey("ImageMetadataId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ImageMetadata");
+                });
+
+            modelBuilder.Entity("Models.UserConsumerHistory", b =>
+                {
+                    b.HasOne("Models.ImageCollection", "Collection")
                         .WithMany()
                         .HasForeignKey("CollectionId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Image", "Image")
+                    b.HasOne("Models.Image", "Image")
                         .WithMany()
                         .HasForeignKey("ImageId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("User", "User")
+                    b.HasOne("Models.User", "User")
                         .WithMany("ConsumerHistories")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -816,13 +903,13 @@ namespace hw.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("UserFavoriteTag", b =>
+            modelBuilder.Entity("Models.UserFavoriteTag", b =>
                 {
-                    b.HasOne("User", null)
+                    b.HasOne("Models.User", null)
                         .WithMany("FavoriteTags")
                         .HasForeignKey("UserId");
 
-                    b.HasOne("UserPreferences", "UserPreferences")
+                    b.HasOne("Models.UserPreferences", "UserPreferences")
                         .WithMany("FavoriteTags")
                         .HasForeignKey("UserPreferencesId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -831,20 +918,20 @@ namespace hw.Migrations
                     b.Navigation("UserPreferences");
                 });
 
-            modelBuilder.Entity("UserPreferences", b =>
+            modelBuilder.Entity("Models.UserPreferences", b =>
                 {
-                    b.HasOne("User", "User")
+                    b.HasOne("Models.User", "User")
                         .WithOne("Preferences")
-                        .HasForeignKey("UserPreferences", "UserId")
+                        .HasForeignKey("Models.UserPreferences", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("UserProducerHistory", b =>
+            modelBuilder.Entity("Models.UserProducerHistory", b =>
                 {
-                    b.HasOne("User", "User")
+                    b.HasOne("Models.User", "User")
                         .WithMany("ProducerHistories")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -853,25 +940,48 @@ namespace hw.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Image", b =>
+            modelBuilder.Entity("UserUserPreferences", b =>
                 {
-                    b.Navigation("AllowedUsers");
+                    b.HasOne("Models.UserPreferences", null)
+                        .WithMany()
+                        .HasForeignKey("FavoriteAuthorOfId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.Navigation("Comments");
-
-                    b.Navigation("Stats");
-
-                    b.Navigation("Tags");
+                    b.HasOne("Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("FavoriteAuthorsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
-            modelBuilder.Entity("ImageCollection", b =>
+            modelBuilder.Entity("Models.Image", b =>
+                {
+                    b.Navigation("Metadata");
+                });
+
+            modelBuilder.Entity("Models.ImageCollection", b =>
                 {
                     b.Navigation("AllowedUsers");
 
                     b.Navigation("Images");
                 });
 
-            modelBuilder.Entity("User", b =>
+            modelBuilder.Entity("Models.ImageMetadata", b =>
+                {
+                    b.Navigation("AllowedUsers");
+
+                    b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("Models.ImageStats", b =>
+                {
+                    b.Navigation("ImageComments");
+
+                    b.Navigation("ImageMetadata");
+                });
+
+            modelBuilder.Entity("Models.User", b =>
                 {
                     b.Navigation("AllowedImageCollections");
 
@@ -892,7 +1002,7 @@ namespace hw.Migrations
                     b.Navigation("ProducerHistories");
                 });
 
-            modelBuilder.Entity("UserPreferences", b =>
+            modelBuilder.Entity("Models.UserPreferences", b =>
                 {
                     b.Navigation("FavoriteTags");
                 });

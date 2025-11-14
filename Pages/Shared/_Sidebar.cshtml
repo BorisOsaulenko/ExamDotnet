@@ -1,0 +1,88 @@
+@model SidebarModel
+
+@{
+var activeKey = Model?.ActiveKey ?? string.Empty;
+var links = new[]
+{
+new { Key = "home", Label = "Home", Url = Url.Page("/Index") ?? "/Index" },
+new { Key = "my-images", Label = "My Images", Url = "/image/mine" },
+new { Key = "my-collections", Label = "My Collections", Url = "/collections/mine" },
+};
+}
+
+<style>
+    #sidebar {
+        position: sticky;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        padding: 0;
+        padding-top: 1rem;
+        margin: 0;
+        border: none;
+        border-right: 1px solid var(--bs-border-color);
+    }
+
+    .list-group-item {
+        border: none;
+    }
+
+    .list-group-item:hover {
+        background-color: var(--bs-light);
+        transition: 200ms;
+    }
+</style>
+
+@if (Model.SelectedImageMetadata == null) {
+<div id="sidebar">
+    <ul class="list-group list-group-flush">
+        @foreach (var link in links)
+        {
+        var isActive = string.Equals(link.Key, activeKey, StringComparison.OrdinalIgnoreCase);
+        <li class="list-group-item">
+            @if (isActive)
+            {
+            <span class="d-block fw-semibold text-primary" aria-current="page">@link.Label</span>
+            }
+            else
+            {
+            <a class="text-decoration-none text-reset d-block" href="@link.Url">
+                @link.Label
+            </a>
+            }
+        </li>
+        }
+    </ul>
+</div>
+}
+else {
+<div class="text-center" style="padding: 0.75rem;" id="sidebar">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <button type="button" class="btn btn-link text-decoration-none text-muted p-0" title="Clear selection" aria-label="Clear selection" style="outline: none; box-shadow: none;" onfocus="this.blur()" data-clear-selected-image>
+            <span aria-hidden="true">&times;</span>
+        </button>
+        <div class="fw-semibold flex-grow-1 text-truncate" style="text-align: right;">
+            @Model.SelectedImageMetadata.Title
+        </div>
+    </div>
+    <img src="@Model.SelectedImageMetadata.Image.BlobUri" class="img-fluid rounded" style="width: 100%;" alt="@(Model.SelectedImageMetadata.Title ?? " Selected image")" />
+
+    @if (!string.IsNullOrWhiteSpace(Model.SelectedImageMetadata.Description))
+    {
+    <p class="text-muted small mb-0">@Model.SelectedImageMetadata.Description</p>
+    }
+</div>
+<script>
+    document.addEventListener("click", (event) => {
+        const clearButton = event.target.closest("[data-clear-selected-image]");
+        if (!clearButton) {
+            return;
+        }
+
+        event.preventDefault();
+        const url = new URL(window.location.href);
+        url.searchParams.delete("SelectedImageId");
+        window.location.href = url.toString();
+    });
+</script>
+}

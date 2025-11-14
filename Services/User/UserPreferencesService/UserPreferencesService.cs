@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using Models;
 using Repositories;
 
@@ -6,12 +6,12 @@ namespace Services.User;
 
 public class UserPreferencesService : IUserPreferencesService
 {
-    public UserPreferencesService(UserPreferencesRepository repository)
+    public UserPreferencesService(IUserPreferencesRepository repository)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
     }
 
-    private readonly UserPreferencesRepository _repository;
+    private readonly IUserPreferencesRepository _repository;
 
     public async Task<UserPreferences> AddAsync(
         UserPreferences entity,
@@ -19,7 +19,7 @@ public class UserPreferencesService : IUserPreferencesService
     )
     {
         entity.Id = 0;
-        return await _repository.AddAsync(entity, cancellationToken).ConfigureAwait(false);
+        return await Task.FromResult(await _repository.AddAsync(entity, cancellationToken));
     }
 
     public async Task<UserPreferences?> GetByUserIdAsync(
@@ -27,13 +27,9 @@ public class UserPreferencesService : IUserPreferencesService
         CancellationToken cancellationToken = default
     )
     {
-        UserPreferences? preference = await _repository
-            .Query()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(preference => preference.UserId == userId, cancellationToken)
-            .ConfigureAwait(false);
-
-        return preference;
+        return await Task.FromResult(
+            _repository.Query().FirstOrDefault(preference => preference.UserId == userId)
+        );
     }
 
     public async Task UpdateAsync(

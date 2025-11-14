@@ -1,6 +1,8 @@
+using System.IO;
 using Azure.Storage.Sas;
 using Models;
 using Repositories;
+using Services.Azure;
 using Services.Storage;
 using ImageModel = Models.Image;
 
@@ -12,18 +14,21 @@ public partial class ImageService : IImageService
     private readonly IBlobContainerClient _containerClient;
     private readonly IImageCollectionRepository _imageCollectionRepository;
     private readonly IImageMetadataRepository _imageMetadataRepository;
+    private readonly IComputerVision _computerVision;
 
     public ImageService(
         IImageRepository repository,
         [FromKeyedServices("PublicImages")] IBlobContainerClient containerClient,
         IImageCollectionRepository imageCollectionRepository,
-        IImageMetadataRepository imageMetadataRepository
+        IImageMetadataRepository imageMetadataRepository,
+        IComputerVision computerVision
     )
     {
         _repository = repository;
         _containerClient = containerClient;
         _imageCollectionRepository = imageCollectionRepository;
         _imageMetadataRepository = imageMetadataRepository;
+        _computerVision = computerVision;
     }
 
     public static string GetMimeType(ImageContentType contentType) =>
@@ -34,14 +39,31 @@ public partial class ImageService : IImageService
             ImageContentType.Gif => "image/gif",
             ImageContentType.Bmp => "image/bmp",
             ImageContentType.WebP => "image/webp",
+            ImageContentType.Avif => "image/avif",
             _ => "application/octet-stream",
         };
+
+    public static ImageContentType? ParseFromFileName(string fileName)
+    {
+        string extension = Path.GetExtension(fileName).ToLowerInvariant();
+
+        return extension switch
+        {
+            ".jpeg" or ".jpg" => ImageContentType.Jpeg,
+            ".png" => ImageContentType.Png,
+            ".gif" => ImageContentType.Gif,
+            ".bmp" => ImageContentType.Bmp,
+            ".webp" => ImageContentType.WebP,
+            ".avif" => ImageContentType.Avif,
+            _ => null,
+        };
+    }
 
     private static string GenerateBlobName() => $"{Guid.NewGuid():N}";
 
     private static readonly TimeSpan DefaultSasLifetime = TimeSpan.FromMinutes(5);
 
-    private ImageModel AttachSASInfo(ImageModel image, string userId)
+    public ImageModel AttachSASInfo(ImageModel image)
     {
         if (image == null || string.IsNullOrEmpty(image.BlobName))
         {
@@ -69,5 +91,24 @@ public partial class ImageService : IImageService
         Uri sasUri = _containerClient.GenerateSasUri(image.BlobName, sasBuilder);
         image.BlobUri = sasUri.ToString();
         return image;
+    }
+
+    private static async Task<Stream> PrepareSeekableStreamAsync(
+        Stream source,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        if (source.CanSeek)
+        {
+            source.Position = 0;
+            return source;
+        }
+
+        var buffer = new MemoryStream();
+        await source.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        buffer.Position = 0;
+        return buffer;
     }
 }

@@ -1,0 +1,332 @@
+@using Models
+@model AddImagePopupPartialModel
+
+@{
+var modalLabelId = $"{Model.ModalId}-label";
+var formId = Model.FormId;
+var statusId = $"{formId}-status";
+var allowedUsersContainerAttr = $"{Model.ModalId}-allowed-users";
+var collectionSelectAttr = $"{Model.ModalId}-collection-select";
+var fileInputId = $"{formId}-file";
+var titleInputId = $"{formId}-title";
+var accessSelectId = $"{formId}-access";
+var allowedUsersInputId = $"{formId}-allowed-users";
+var tagsInputId = $"{formId}-tags";
+var descriptionInputId = $"{formId}-description";
+var locationInputId = $"{formId}-location";
+var submitButtonId = $"{formId}-submit";
+var defaultAccessLevelValue = (int)ImageAccessLevel.Public;
+var allowedUsersAccessLevelValue = (int)ImageAccessLevel.AllowedUsers;
+ImageAccessLevel[] accessLevelOptions = Enum.GetValues<ImageAccessLevel>();
+    }
+
+    <div class="add-image-popup">
+        <button type="button" class="btn btn-primary" id="@Model.ActivationButtonId" data-bs-toggle="modal" data-bs-target="#@Model.ModalId">
+            @Model.TriggerButtonText
+        </button>
+
+        <div class="modal fade" id="@Model.ModalId" tabindex="-1" aria-labelledby="@modalLabelId" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="@modalLabelId">Upload image</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="@statusId" class="alert alert-info d-none" role="alert"></div>
+                        <form id="@formId" class="needs-validation" novalidate>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="@fileInputId" class="form-label">Image file</label>
+                                    <input type="file" class="form-control" id="@fileInputId" accept="image/*" required />
+                                    <div class="form-text">Supported formats: PNG, JPEG, GIF, BMP, TIFF, WebP, AVIF.</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="@titleInputId" class="form-label">Title</label>
+                                    <input type="text" class="form-control" id="@titleInputId" maxlength="@ImageMetadata.MaxTitleLength" placeholder="My latest shot" required />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="@locationInputId" class="form-label">Location (optional)</label>
+                                    <input type="text" class="form-control" id="@locationInputId" maxlength="@ImageMetadata.MaxLocationLength" placeholder="City, Country" />
+                                </div>
+
+                                <div class="col-12">
+                                    <label for="@descriptionInputId" class="form-label">Description</label>
+                                    <textarea class="form-control" id="@descriptionInputId" rows="3" maxlength="@ImageMetadata.MaxDescriptionLength" placeholder="Add extra details (lighting, camera, etc.)"></textarea>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="@accessSelectId" class="form-label">Access level</label>
+                                    <select id="@accessSelectId" class="form-select">
+                                        @foreach (var level in accessLevelOptions)
+                                        {
+                                        <option value="@((int)level)">@level</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6" data-collection-select="@collectionSelectAttr">
+                                    <label class="form-label">Collection (optional)</label>
+                                    <select class="form-select" disabled>
+                                        <option value="">Loading collections...</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-12" data-allowed-users-container="@allowedUsersContainerAttr" hidden>
+                                    <label for="@allowedUsersInputId" class="form-label">Allowed user IDs</label>
+                                    <textarea class="form-control" id="@allowedUsersInputId" rows="2" placeholder="user-id-1, user-id-2"></textarea>
+                                    <div class="form-text">Comma or newline separated list. Only applicable to the “AllowedUsers” access level.</div>
+                                </div>
+
+                                <div class="col-12">
+                                    <label for="@tagsInputId" class="form-label">Tags</label>
+                                    <input type="text" class="form-control" id="@tagsInputId" placeholder="portrait, summer, travel" />
+                                    <div class="form-text">Comma-separated tags will be cleaned up automatically.</div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" form="@formId" id="@submitButtonId">Upload</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const initializeAddImagePopup = () => {
+                const modalId = "@Model.ModalId";
+                const formId = "@formId";
+                const statusId = "@statusId";
+                const allowedUsersAttr = "@allowedUsersContainerAttr";
+                const collectionSelectAttr = "@collectionSelectAttr";
+                const fileInputId = "@fileInputId";
+                const titleInputId = "@titleInputId";
+                const descriptionInputId = "@descriptionInputId";
+                const locationInputId = "@locationInputId";
+                const accessSelectId = "@accessSelectId";
+                const allowedUsersInputId = "@allowedUsersInputId";
+                const tagsInputId = "@tagsInputId";
+                const submitButtonId = "@submitButtonId";
+
+                const form = document.getElementById(formId);
+                const modalElement = document.getElementById(modalId);
+                const statusEl = document.getElementById(statusId);
+                if (!form || !modalElement || !statusEl) {
+                    return;
+                }
+
+                const fileInput = document.getElementById(fileInputId);
+                const titleInput = document.getElementById(titleInputId);
+                const descriptionInput = document.getElementById(descriptionInputId);
+                const locationInput = document.getElementById(locationInputId);
+                const accessSelect = document.getElementById(accessSelectId);
+                const allowedUsersInput = document.getElementById(allowedUsersInputId);
+                const tagsInput = document.getElementById(tagsInputId);
+                const submitButton = document.getElementById(submitButtonId);
+                const allowedUsersContainer = document.querySelector(`[data-allowed-users-container="${allowedUsersAttr}"]`);
+                const collectionWrapper = document.querySelector(`[data-collection-select="${collectionSelectAttr}"]`);
+                const collectionSelect = collectionWrapper?.querySelector("select") ?? null;
+                let collectionsLoaded = false;
+                let isSubmitting = false;
+
+                const setStatus = (type, message) => {
+                    statusEl.textContent = message || "";
+                    statusEl.classList.remove("d-none", "alert", "alert-info", "alert-success", "alert-danger", "alert-warning");
+
+                    if (!message) {
+                        statusEl.classList.add("d-none");
+                        return;
+                    }
+
+                    statusEl.classList.add("alert", `alert-${type ?? "info"}`);
+                };
+
+                const setSubmitting = (submitting) => {
+                    isSubmitting = submitting;
+                    if (submitButton) {
+                        submitButton.disabled = submitting;
+                        submitButton.textContent = submitting ? "Uploading..." : "Upload";
+                    }
+                    form.querySelectorAll("input, textarea, select").forEach((field) => {
+                        field.disabled = submitting && field !== fileInput;
+                    });
+                };
+
+                const defaultAccessLevelValue = Number("@defaultAccessLevelValue");
+                const allowedUsersAccessLevelValue = Number("@allowedUsersAccessLevelValue");
+
+                const toggleAllowedUsers = () => {
+                    if (!allowedUsersContainer || !accessSelect) {
+                        return;
+                    }
+
+                    const selectedRaw = accessSelect.value;
+                    const normalizedValue =
+                        selectedRaw === "" ? defaultAccessLevelValue : Number(selectedRaw);
+                    const isAllowed = normalizedValue === allowedUsersAccessLevelValue;
+                    allowedUsersContainer.hidden = !isAllowed;
+                };
+
+                accessSelect?.addEventListener("change", toggleAllowedUsers);
+                toggleAllowedUsers();
+
+                const splitListInput = (value) =>
+                    value
+                        .split(/[\n,]/)
+                        .map((item) => item.trim())
+                        .filter((item, index, all) => item.length > 0 && all.indexOf(item) === index);
+
+                const ensureCollections = async () => {
+                    if (!collectionSelect || collectionsLoaded) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch("/api/image-collection", { headers: { Accept: "application/json" } });
+                        if (!response.ok) {
+                            throw new Error("Unable to load collections yet.");
+                        }
+
+                        const collections = await response.json();
+                        collectionSelect.innerHTML = '<option value="">No collection</option>';
+                        collections.forEach((collection) => {
+                            const option = document.createElement("option");
+                            option.value = collection.id;
+                            option.textContent = collection.title;
+                            collectionSelect.appendChild(option);
+                        });
+                        collectionSelect.disabled = false;
+                        collectionsLoaded = true;
+                    } catch (error) {
+                        collectionSelect.innerHTML = '<option value="">Failed to load collections</option>';
+                        setStatus("warning", error.message ?? "Unable to load collections.");
+                    }
+                };
+
+                modalElement.addEventListener("shown.bs.modal", ensureCollections);
+
+                const resetForm = () => {
+                    form.reset();
+                    if (collectionSelect) {
+                        collectionSelect.selectedIndex = 0;
+                    }
+                    toggleAllowedUsers();
+                };
+
+                form.addEventListener("submit", async (event) => {
+                    event.preventDefault();
+                    if (isSubmitting) {
+                        return;
+                    }
+
+                    const file = fileInput?.files?.[0];
+                    if (!file) {
+                        setStatus("danger", "Please select an image file.");
+                        return;
+                    }
+
+                    if (!titleInput?.value?.trim()) {
+                        setStatus("danger", "Title is required.");
+                        return;
+                    }
+
+                    const selectedAccessRaw = accessSelect?.value ?? "";
+                    let normalizedAccessValue = defaultAccessLevelValue;
+                    if (selectedAccessRaw !== "") {
+                        const parsedValue = Number(selectedAccessRaw);
+                        if (!Number.isNaN(parsedValue)) {
+                            normalizedAccessValue = parsedValue;
+                        }
+                    }
+
+                    const metadata = {
+                        Title: titleInput.value.trim(),
+                        Description: descriptionInput?.value?.trim() || null,
+                        Location: locationInput?.value?.trim() || null,
+                        AccessLevel: normalizedAccessValue,
+                        AllowedUsers: [],
+                        Tags: [],
+                        ImageCollectionId: null,
+                    };
+
+                    if (
+                        metadata.AccessLevel === allowedUsersAccessLevelValue
+                        && allowedUsersInput
+                    ) {
+                        metadata.AllowedUsers = splitListInput(allowedUsersInput.value);
+                    }
+
+                    if (tagsInput?.value) {
+                        metadata.Tags = splitListInput(tagsInput.value);
+                    }
+
+                    if (collectionSelect && collectionSelect.value) {
+                        const parsed = parseInt(collectionSelect.value, 10);
+                        if (!Number.isNaN(parsed)) {
+                            metadata.ImageCollectionId = parsed;
+                        }
+                    }
+
+                    const payload = new FormData();
+                    payload.append("imageFile", file);
+                    payload.append("metadataInputJson", JSON.stringify(metadata));
+
+                    setStatus("info", "Uploading...");
+                    setSubmitting(true);
+
+                    try {
+                        const response = await fetch("/api/image", {
+                            method: "POST",
+                            body: payload,
+                        });
+
+                        if (!response.ok) {
+                            const errorBody = await response.text();
+                            throw new Error(errorBody || "Upload failed.");
+                        }
+
+                        const created = await response.json();
+                        setStatus("success", "Image uploaded successfully.");
+                        resetForm();
+
+                        const hideModal = () => {
+                            const modalApi = window.bootstrap?.Modal?.getOrCreateInstance(modalElement);
+                            if (modalApi) {
+                                modalApi.hide();
+                            } else {
+                                modalElement.classList.remove("show");
+                            }
+                            setStatus(null, "");
+                        };
+
+                        window.setTimeout(hideModal, 1000);
+
+                        document.dispatchEvent(
+                            new CustomEvent("image:uploaded", {
+                                detail: created,
+                            })
+                        );
+
+                        // refresh the page to show the new image
+                        window.location.reload();
+                    } catch (error) {
+                        setStatus("danger", error.message ?? "Upload failed.");
+                    } finally {
+                        setSubmitting(false);
+                    }
+                });
+            };
+
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", initializeAddImagePopup);
+            } else {
+                initializeAddImagePopup();
+            }
+        })();
+    </script>

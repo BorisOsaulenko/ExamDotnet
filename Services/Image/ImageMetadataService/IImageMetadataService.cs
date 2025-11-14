@@ -1,5 +1,5 @@
 using System.Linq.Expressions;
-using Models;
+using Controllers.Image;
 using ImageMetadataModel = Models.ImageMetadata;
 
 namespace Services.Image;
@@ -12,6 +12,7 @@ public interface IImageMetadataService
     );
     Task UpdateAsync(ImageMetadataModel entity, CancellationToken cancellationToken = default);
     Task RemoveAsync(ImageMetadataModel entity, CancellationToken cancellationToken = default);
+    Task RemoveByCollectionIdAsync(string userId, int collectionId, CancellationToken cancellationToken = default);
     Task<List<ImageMetadataModel>> GetWithPaginationAsync(
         string userId,
         PaginationParams pagination,
@@ -23,8 +24,14 @@ public interface IImageMetadataService
         PaginationParams pagination,
         CancellationToken cancellationToken = default
     );
+    Task<List<ImageMetadataModel>> GetByFilterAsync(
+        string? userId,
+        FilterParams filterParams,
+        PaginationParams pagination,
+        CancellationToken cancellationToken = default
+    );
     Task<ImageMetadataModel?> GetByIdAsync(
-        string userId,
+        string? userId,
         int id,
         CancellationToken cancellationToken = default
     );

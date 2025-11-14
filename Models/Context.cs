@@ -79,6 +79,12 @@ public class ApplicationDbContext : IdentityDbContext<User>
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        builder
+            .Entity<ImageMetadata>()
+            .Property(x => x.EditedAt)
+            .HasDefaultValueSql("timezone('utc', now())")
+            .ValueGeneratedOnAddOrUpdate();
+
         builder.Entity<ImageMetadata>(entity =>
         {
             entity
@@ -101,7 +107,7 @@ public class ApplicationDbContext : IdentityDbContext<User>
 
             entity
                 .HasMany(e => e.AllowedUsers)
-                .WithOne(au => au.Image)
+                .WithOne(au => au.ImageMetadata)
                 .HasForeignKey(au => au.ImageMetadataId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -164,10 +170,7 @@ public class ApplicationDbContext : IdentityDbContext<User>
     {
         builder.Entity<UserPreferences>(entity =>
         {
-            entity
-                .Property(e => e.FavoriteAuthors)
-                .HasConversion(StringCollectionConverter)
-                .Metadata.SetValueComparer(StringCollectionComparer);
+            entity.HasMany(e => e.FavoriteAuthors).WithMany(fa => fa.FavoriteAuthorOf);
 
             entity
                 .HasMany(e => e.FavoriteTags)
