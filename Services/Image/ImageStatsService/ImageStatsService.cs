@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Models;
 using Repositories;
 
@@ -129,14 +130,20 @@ public class ImageStatsService : IImageStatsService
 
         if (preferences == null)
         {
-            Models.User user =
-                await Task.FromResult(_userRepository.Query().FirstOrDefault(u => u.Id == userId))
-                    .ConfigureAwait(false)
-                ?? throw new InvalidOperationException("User does not exist.");
+            Models.User? user = await Task.FromResult(
+                    _userRepository.Query().FirstOrDefault(u => u.Id == userId)
+                )
+                .ConfigureAwait(false);
+
+            if (user == null)
+                throw new InvalidOperationException("User does not exist.");
 
             preferences = new UserPreferences { UserId = userId, User = user };
 
             _userPreferencesRepository.Add(preferences);
+            await _userPreferencesRepository
+                .SaveChangesAsync(cancellationToken)
+                .ConfigureAwait(false);
         }
 
         bool alreadyLiked = preferences.LikedImages.Any(liked => liked.Id == trackedStats.Id);
@@ -148,9 +155,7 @@ public class ImageStatsService : IImageStatsService
             );
 
             if (likeToRemove != null)
-            {
                 preferences.LikedImages.Remove(likeToRemove);
-            }
         }
         else
         {

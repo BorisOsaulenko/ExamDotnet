@@ -37,7 +37,26 @@ public class UserPreferencesService : IUserPreferencesService
         CancellationToken cancellationToken = default
     )
     {
-        _repository.Update(entity);
+        ArgumentNullException.ThrowIfNull(entity);
+
+        UserPreferences? existing =
+            entity.Id != 0
+                ? await _repository.GetByIdAsync(cancellationToken, entity.Id).ConfigureAwait(false)
+                : _repository.Query().FirstOrDefault(pref => pref.UserId == entity.UserId);
+
+        if (existing == null)
+        {
+            throw new InvalidOperationException("User preferences do not exist.");
+        }
+
+        existing.ReceiveNotifications = entity.ReceiveNotifications;
+        existing.FavoriteTags = entity.FavoriteTags;
+        existing.FavoriteAuthors = entity.FavoriteAuthors;
+        existing.SubscribedCollections = entity.SubscribedCollections;
+        existing.LikedImages = entity.LikedImages;
+        existing.Theme = entity.Theme;
+
+        _repository.Update(existing);
         await _repository.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

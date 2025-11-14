@@ -31,6 +31,16 @@ new { Key = "my-collections", Label = "My Collections", Url = "/collections/mine
         background-color: var(--bs-light);
         transition: 200ms;
     }
+
+    #image-preview-container>div {
+        opacity: 0;
+        transition: 200ms;
+    }
+
+    #image-preview-container:hover>div {
+        opacity: 1;
+        transition: 200ms;
+    }
 </style>
 
 @if (Model.SelectedImageMetadata == null) {
@@ -65,11 +75,22 @@ else {
             @Model.SelectedImageMetadata.Title
         </div>
     </div>
-    <img src="@Model.SelectedImageMetadata.Image.BlobUri" class="img-fluid rounded" style="width: 100%;" alt="@(Model.SelectedImageMetadata.Title ?? " Selected image")" />
+
+    <div style="position: relative;" id="image-preview-container">
+        <img src="@Model.SelectedImageMetadata.Image.BlobUri" class="img-fluid rounded" style="width: 100%;" alt="@(Model.SelectedImageMetadata.Title ?? " Selected image")" />
+        <div class="d-flex gap-2" style="justify-content: space-between; position: absolute; bottom: 0; left: 0; right: 0; z-index: 1; padding: 0.5rem; background-color: rgba(0, 0, 0, 0.5);">
+            <button id="likeButton" style="background: transparent; outline: none; border: none;">
+                <i class="fa-solid fa-heart" style="color: rgba(255, 0, 0, 0.7);"></i>
+            </button>
+            <button id="shareButton" style="background: transparent; outline: none; border: none;">
+                <i class="fa-solid fa-share" style="color: rgba(255, 255, 255, 0.7);"></i>
+            </button>
+        </div>
+    </div>
 
     @if (!string.IsNullOrWhiteSpace(Model.SelectedImageMetadata.Description))
     {
-    <p class="text-muted small mb-0">@Model.SelectedImageMetadata.Description</p>
+    <p class="text-muted small mt-2" style="text-align: left;">@Model.SelectedImageMetadata.Description</p>
     }
 </div>
 <script>
@@ -83,6 +104,26 @@ else {
         const url = new URL(window.location.href);
         url.searchParams.delete("SelectedImageId");
         window.location.href = url.toString();
+    });
+
+    document.getElementById("likeButton").addEventListener("click", () => {
+        const imageId = "@Model.SelectedImageMetadata.Id";
+        fetch(`/api/image/${imageId}/likes/toggle`, { method: "POST" }); // just a like, dont care about response
+    });
+    document.getElementById("shareButton").addEventListener("click", async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: "@Model.SelectedImageMetadata.Title",
+                    text: "Check out this image!",
+                    url: `http://localhost:5016/Index?Filter.SearchTerm=${encodeURIComponent("@Model.SelectedImageMetadata.Title")}`
+                });
+            } catch (err) {
+                console.error("Share canceled/failed", err);
+            }
+        } else {
+            // fallback (e.g., display custom modal)
+        }
     });
 </script>
 }
